@@ -164,9 +164,16 @@ update_ip_catalog -rebuild -scan_changes
   connect_bd_net -net xlconstant_0_dout [get_bd_pins axis_clock_converter_tx_0/s_axis_aresetn] [get_bd_pins xlconstant_0/dout]
 
 assign_bd_address
+regenerate_bd_layout
 validate_bd_design
 make_wrapper -files [get_files $ip_dir/$project_name/${project_name}.srcs/sources_1/bd/${project_name}/${project_name}.bd] -top
 add_files -norecurse $ip_dir/$project_name/${project_name}.srcs/sources_1/bd/${project_name}/hdl/${project_name}_wrapper.v
 save_bd_design
+
+set_property synth_checkpoint_mode None [get_files $root_dir/ip/eth_100G/eth_100G.srcs/sources_1/bd/eth_100G/eth_100G.bd]
+generate_target all			[get_files $root_dir/ip/eth_100G/eth_100G.srcs/sources_1/bd/eth_100G/eth_100G.bd]
+
+make_wrapper -files [get_files $root_dir/ip/eth_100G/eth_100G.srcs/sources_1/bd/eth_100G/eth_100G.bd] -top
+
 close_project
 #exit
