@@ -141,9 +141,12 @@ void read_eth_packet(AXI_STREAM &deth_in, DATA_STREAM &raw_out, eth_settings_t e
 void filter_packets(DATA_STREAM &in, DATA_STREAM &out);
 
 void convert_data(DATA_STREAM &in, DATA_STREAM &out,
-		snap_membus_t *d_hbm_p0, snap_membus_t *d_hbm_p1,
-		snap_membus_t *d_hbm_p2, snap_membus_t *d_hbm_p3,
-		snap_membus_t *d_hbm_p4, snap_membus_t *d_hbm_p5,
+		snap_HBMbus_t *d_hbm_p0, snap_HBMbus_t *d_hbm_p1,
+		snap_HBMbus_t *d_hbm_p2, snap_HBMbus_t *d_hbm_p3,
+		snap_HBMbus_t *d_hbm_p4, snap_HBMbus_t *d_hbm_p5,
+		snap_HBMbus_t *d_hbm_p6, snap_HBMbus_t *d_hbm_p7,
+		snap_HBMbus_t *d_hbm_p8, snap_HBMbus_t *d_hbm_p9,
+		snap_HBMbus_t *d_hbm_p10, snap_HBMbus_t *d_hbm_p11,
 		bool saw_raw);
 
 void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem,

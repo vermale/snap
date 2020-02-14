@@ -60,6 +60,9 @@ void convert_data(DATA_STREAM &in, DATA_STREAM &out,
 		snap_membus_t *d_hbm_p0, snap_membus_t *d_hbm_p1,
 		snap_membus_t *d_hbm_p2, snap_membus_t *d_hbm_p3,
 		snap_membus_t *d_hbm_p4, snap_membus_t *d_hbm_p5,
+		snap_membus_t *d_hbm_p6, snap_membus_t *d_hbm_p7,
+		snap_membus_t *d_hbm_p8, snap_membus_t *d_hbm_p9,
+		snap_membus_t *d_hbm_p10, snap_membus_t *d_hbm_p11,
 
 		bool save_raw) {
 

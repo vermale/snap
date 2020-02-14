@@ -26,12 +26,17 @@ inline void mask_tkeep(ap_uint<512> &data, ap_uint<64> keep) {
 	}
 }
 
-inline void copy_data(snap_membus_t *din_gmem, snap_membus_t *d_hbm, size_t in_addr) {
+inline void copy_data(snap_membus_t *din_gmem, snap_HBMbus_t *d_hbm0, snap_HBMbus_t *d_hbm1, size_t in_addr) {
 	for (int i = 0; i < NMODULES * 512 * 1024 / 32; i ++) {
 #pragma HLS pipeline
 			ap_uint<512> tmp;
+
 			memcpy(&tmp, din_gmem + in_addr + i, 64);
-			memcpy(d_hbm+i, &tmp, 64);
+                        ap_uint<256> tmp0 = tmp(255,0);
+                        ap_uint<256> tmp1 = tmp(511,256);
+
+			memcpy(d_hbm0+i, &tmp0, 64);
+			memcpy(d_hbm1+i, &tmp1, 64);
 		}
 }
 
@@ -39,10 +44,13 @@ void process_frames(AXI_STREAM &din_eth,
 		eth_settings_t eth_settings, eth_stat_t &eth_stat,
 		snap_membus_t *dout_gmem,
 		size_t out_frame_buffer_addr, size_t out_frame_status_addr,
-		snap_membus_t *d_hbm_p0, snap_membus_t *d_hbm_p1,
-		snap_membus_t *d_hbm_p2, snap_membus_t *d_hbm_p3,
-		snap_membus_t *d_hbm_p4, snap_membus_t *d_hbm_p5,
-		bool save_raw) {
+                snap_HBMbus_t *d_hbm_p0, snap_HBMbus_t *d_hbm_p1,
+                snap_HBMbus_t *d_hbm_p2, snap_HBMbus_t *d_hbm_p3,
+                snap_HBMbus_t *d_hbm_p4, snap_HBMbus_t *d_hbm_p5,
+                snap_HBMbus_t *d_hbm_p6, snap_HBMbus_t *d_hbm_p7,
+                snap_HBMbus_t *d_hbm_p8, snap_HBMbus_t *d_hbm_p9,
+                snap_HBMbus_t *d_hbm_p10, snap_HBMbus_t *d_hbm_p11,
+ 		bool save_raw) {
 #pragma HLS DATAFLOW
 	DATA_STREAM raw;
 	DATA_STREAM converted;
@@ -53,6 +61,9 @@ void process_frames(AXI_STREAM &din_eth,
 			d_hbm_p0, d_hbm_p1,
 			d_hbm_p2, d_hbm_p3,
 			d_hbm_p4, d_hbm_p5,
+			d_hbm_p6, d_hbm_p7,
+			d_hbm_p8, d_hbm_p9,
+			d_hbm_p10, d_hbm_p11,
 			save_raw);
 	write_data(converted, dout_gmem, out_frame_buffer_addr, out_frame_status_addr);
 }
@@ -62,12 +73,12 @@ void process_frames(AXI_STREAM &din_eth,
 //----------------------------------------------------------------------
 static int process_action(snap_membus_t *din_gmem,
 		snap_membus_t *dout_gmem,
-		snap_membus_t *d_hbm_p0,
-		snap_membus_t *d_hbm_p1,
-		snap_membus_t *d_hbm_p2,
-		snap_membus_t *d_hbm_p3,
-		snap_membus_t *d_hbm_p4,
-		snap_membus_t *d_hbm_p5,
+                snap_HBMbus_t *d_hbm_p0, snap_HBMbus_t *d_hbm_p1,
+                snap_HBMbus_t *d_hbm_p2, snap_HBMbus_t *d_hbm_p3,
+                snap_HBMbus_t *d_hbm_p4, snap_HBMbus_t *d_hbm_p5,
+                snap_HBMbus_t *d_hbm_p6, snap_HBMbus_t *d_hbm_p7,
+                snap_HBMbus_t *d_hbm_p8, snap_HBMbus_t *d_hbm_p9,
+                snap_HBMbus_t *d_hbm_p10, snap_HBMbus_t *d_hbm_p11,
 		AXI_STREAM &din_eth,
 		AXI_STREAM &dout_eth,
 		action_reg *act_reg)
@@ -94,23 +105,30 @@ static int process_action(snap_membus_t *din_gmem,
 
 	// Load constants
 	// Copy pede G1
-	copy_data(din_gmem, d_hbm_p0, in_gain_pedestal_addr);
+	copy_data(din_gmem, d_hbm_p0, d_hbm_p1, in_gain_pedestal_addr);
 	// Copy pede G2
-	copy_data(din_gmem, d_hbm_p1, in_gain_pedestal_addr + (NMODULES * 512 * 1024 / 32));
+	copy_data(din_gmem, d_hbm_p2, d_hbm_p3, in_gain_pedestal_addr + (NMODULES * 512 * 1024 / 32));
 	// Copy gain G0
-	copy_data(din_gmem, d_hbm_p2, in_gain_pedestal_addr + (NMODULES * 512 * 1024 / 32) * 2);
+	copy_data(din_gmem, d_hbm_p4, d_hbm_p5, in_gain_pedestal_addr + (NMODULES * 512 * 1024 / 32) * 2);
 	// Copy gain G1
-	copy_data(din_gmem, d_hbm_p3, in_gain_pedestal_addr + (NMODULES * 512 * 1024 / 32) * 3);
+	copy_data(din_gmem, d_hbm_p6, d_hbm_p7, in_gain_pedestal_addr + (NMODULES * 512 * 1024 / 32) * 3);
 	// Copy gain G2
-	copy_data(din_gmem, d_hbm_p4, in_gain_pedestal_addr + (NMODULES * 512 * 1024 / 32) * 4);
+	copy_data(din_gmem, d_hbm_p8, d_hbm_p9, in_gain_pedestal_addr + (NMODULES * 512 * 1024 / 32) * 4);
 	// Copy pede G0 RMS
-	copy_data(din_gmem, d_hbm_p5, in_gain_pedestal_addr + (NMODULES * 512 * 1024 / 32) * 5);
+	copy_data(din_gmem, d_hbm_p10, d_hbm_p11, in_gain_pedestal_addr + (NMODULES * 512 * 1024 / 32) * 5);
 
 
 	//if (act_reg->Data.save_raw)
 	// process_frames_raw(din_eth, eth_settings, eth_stats, dout_gmem, out_frame_buffer_addr, out_frame_status_addr);
 	//else
-	process_frames(din_eth, eth_settings, eth_stats, dout_gmem, out_frame_buffer_addr, out_frame_status_addr, d_hbm_p0, d_hbm_p1, d_hbm_p2, d_hbm_p3, d_hbm_p4, d_hbm_p5, act_reg->Data.save_raw);
+	process_frames(din_eth, eth_settings, eth_stats, dout_gmem, out_frame_buffer_addr, out_frame_status_addr, 
+                       d_hbm_p0, d_hbm_p1, 
+                       d_hbm_p2, d_hbm_p3, 
+                       d_hbm_p4, d_hbm_p5, 
+                       d_hbm_p6, d_hbm_p7, 
+                       d_hbm_p8, d_hbm_p9, 
+                       d_hbm_p10, d_hbm_p11, 
+                       act_reg->Data.save_raw);
 
 	act_reg->Data.good_packets = eth_stats.good_packets;
 	act_reg->Data.bad_packets = eth_stats.bad_packets;
@@ -123,9 +141,12 @@ static int process_action(snap_membus_t *din_gmem,
 
 //--- TOP LEVEL MODULE -------------------------------------------------
 void hls_action(snap_membus_t *din_gmem, snap_membus_t *dout_gmem,
-		snap_membus_t *d_hbm_p0, snap_membus_t *d_hbm_p1,
-		snap_membus_t *d_hbm_p2, snap_membus_t *d_hbm_p3,
-		snap_membus_t *d_hbm_p4, snap_membus_t *d_hbm_p5,
+		snap_HBMbus_t *d_hbm_p0, snap_HBMbus_t *d_hbm_p1,
+		snap_HBMbus_t *d_hbm_p2, snap_HBMbus_t *d_hbm_p3,
+		snap_HBMbus_t *d_hbm_p4, snap_HBMbus_t *d_hbm_p5,
+		snap_HBMbus_t *d_hbm_p6, snap_HBMbus_t *d_hbm_p7,
+		snap_HBMbus_t *d_hbm_p8, snap_HBMbus_t *d_hbm_p9,
+		snap_HBMbus_t *d_hbm_p10, snap_HBMbus_t *d_hbm_p11,
 		AXI_STREAM &din_eth, AXI_STREAM &dout_eth,
 		action_reg *act_reg,
 		action_RO_config_reg *Action_Config)
@@ -152,19 +173,29 @@ void hls_action(snap_membus_t *din_gmem, snap_membus_t *dout_gmem,
 #pragma HLS INTERFACE s_axilite port=return bundle=ctrl_reg
 
 #pragma HLS INTERFACE m_axi port=d_hbm_p0 bundle=card_hbm_p0 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64
+		max_read_burst_length=64  max_write_burst_length=64 latency=8
 #pragma HLS INTERFACE m_axi port=d_hbm_p1 bundle=card_hbm_p1 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64
+		max_read_burst_length=64  max_write_burst_length=64 latency=8
 #pragma HLS INTERFACE m_axi port=d_hbm_p2 bundle=card_hbm_p2 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64
+		max_read_burst_length=64  max_write_burst_length=64 latency=8
 #pragma HLS INTERFACE m_axi port=d_hbm_p3 bundle=card_hbm_p3 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64
+		max_read_burst_length=64  max_write_burst_length=64 latency=8
 #pragma HLS INTERFACE m_axi port=d_hbm_p4 bundle=card_hbm_p4 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64
+		max_read_burst_length=64  max_write_burst_length=64 latency=8
 #pragma HLS INTERFACE m_axi port=d_hbm_p5 bundle=card_hbm_p5 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64
-
-
+		max_read_burst_length=64  max_write_burst_length=64 latency=8
+#pragma HLS INTERFACE m_axi port=d_hbm_p6 bundle=card_hbm_p6 offset=slave depth=512 \
+		max_read_burst_length=64  max_write_burst_length=64 latency=8
+#pragma HLS INTERFACE m_axi port=d_hbm_p7 bundle=card_hbm_p7 offset=slave depth=512 \
+		max_read_burst_length=64  max_write_burst_length=64 latency=8
+#pragma HLS INTERFACE m_axi port=d_hbm_p8 bundle=card_hbm_p8 offset=slave depth=512 \
+		max_read_burst_length=64  max_write_burst_length=64 latency=8
+#pragma HLS INTERFACE m_axi port=d_hbm_p9 bundle=card_hbm_p9 offset=slave depth=512 \
+		max_read_burst_length=64  max_write_burst_length=64 latency=8
+#pragma HLS INTERFACE m_axi port=d_hbm_p10 bundle=card_hbm_p10 offset=slave depth=512 \
+		max_read_burst_length=64  max_write_burst_length=64 latency=8
+#pragma HLS INTERFACE m_axi port=d_hbm_p11 bundle=card_hbm_p11 offset=slave depth=512 \
+		max_read_burst_length=64  max_write_burst_length=64 latency=8
 
 #pragma HLS INTERFACE axis register off port=din_eth
 #pragma HLS INTERFACE axis register off port=dout_eth
@@ -184,7 +215,7 @@ void hls_action(snap_membus_t *din_gmem, snap_membus_t *dout_gmem,
 	default:
 		/* process_action(din_gmem, dout_gmem, d_ddrmem, act_reg); */
 		// process_action(din_gmem, dout_gmem, din_eth, dout_eth, act_reg);
-		process_action(din_gmem, dout_gmem, d_hbm_p0, d_hbm_p1, d_hbm_p2, d_hbm_p3, d_hbm_p4, d_hbm_p5, din_eth, dout_eth, act_reg);
+		process_action(din_gmem, dout_gmem, d_hbm_p0, d_hbm_p1, d_hbm_p2, d_hbm_p3, d_hbm_p4, d_hbm_p5, d_hbm_p6, d_hbm_p7, d_hbm_p8, d_hbm_p9, d_hbm_p10, d_hbm_p11, din_eth, dout_eth, act_reg);
 		break;
 	}
 }
