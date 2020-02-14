@@ -43,7 +43,7 @@ set bd_name  hbm_top
 #   --> follow HBM names <--
 # _______________________________________________________________________________
 #CHANGE_HBM_INTERFACES_NUMBER
-set  HBM_MEM_NUM 8
+set  HBM_MEM_NUM 12
 
 # Create HBM project
 create_project   $prj_name $root_dir/ip/hbm -part $fpga_part -force >> $log_file
@@ -200,8 +200,8 @@ set_property -dict [list \
   CONFIG.USER_MC_ENABLE_01 {TRUE}  \
   CONFIG.USER_MC_ENABLE_02 {TRUE}  \
   CONFIG.USER_MC_ENABLE_03 {TRUE}  \
-  CONFIG.USER_MC_ENABLE_04 {FALSE}  \
-  CONFIG.USER_MC_ENABLE_05 {FALSE}  \
+  CONFIG.USER_MC_ENABLE_04 {TRUE}  \
+  CONFIG.USER_MC_ENABLE_05 {TRUE}  \
   CONFIG.USER_MC_ENABLE_06 {FALSE}  \
   CONFIG.USER_MC_ENABLE_07 {FALSE}  \
 ] $cell >> $log_file

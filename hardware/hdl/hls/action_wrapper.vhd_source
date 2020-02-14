@@ -526,6 +526,190 @@ ENTITY action_wrapper IS
     m_axi_card_hbm_p7_bresp : IN STD_LOGIC_VECTOR (1 downto 0);
     m_axi_card_hbm_p7_bid : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_ID_WIDTH-1 downto 0);
     m_axi_card_hbm_p7_buser : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_BUSER_WIDTH-1 downto 0);
+  --
+    m_axi_card_hbm_p8_awvalid : OUT STD_LOGIC;
+    m_axi_card_hbm_p8_awready : IN STD_LOGIC;
+    m_axi_card_hbm_p8_awaddr : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_ADDR_WIDTH-1 downto 0);
+    m_axi_card_hbm_p8_awid : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_ID_WIDTH-1 downto 0);
+    m_axi_card_hbm_p8_awlen : OUT STD_LOGIC_VECTOR (7 downto 0);
+    m_axi_card_hbm_p8_awsize : OUT STD_LOGIC_VECTOR (2 downto 0);
+    m_axi_card_hbm_p8_awburst : OUT STD_LOGIC_VECTOR (1 downto 0);
+    m_axi_card_hbm_p8_awlock : OUT STD_LOGIC_VECTOR (1 downto 0);
+    m_axi_card_hbm_p8_awcache : OUT STD_LOGIC_VECTOR (3 downto 0);
+    m_axi_card_hbm_p8_awprot : OUT STD_LOGIC_VECTOR (2 downto 0);
+    m_axi_card_hbm_p8_awqos : OUT STD_LOGIC_VECTOR (3 downto 0);
+    m_axi_card_hbm_p8_awregion : OUT STD_LOGIC_VECTOR (3 downto 0);
+    m_axi_card_hbm_p8_awuser : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_AWUSER_WIDTH-1 downto 0);
+    m_axi_card_hbm_p8_wvalid : OUT STD_LOGIC;
+    m_axi_card_hbm_p8_wready : IN STD_LOGIC;
+    m_axi_card_hbm_p8_wdata : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_DATA_WIDTH-1 downto 0);
+    m_axi_card_hbm_p8_wstrb : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_DATA_WIDTH/8-1 downto 0);
+    m_axi_card_hbm_p8_wlast : OUT STD_LOGIC;
+    m_axi_card_hbm_p8_wid : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_ID_WIDTH-1 downto 0);
+    m_axi_card_hbm_p8_wuser : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_WUSER_WIDTH-1 downto 0);
+    m_axi_card_hbm_p8_arvalid : OUT STD_LOGIC;
+    m_axi_card_hbm_p8_arready : IN STD_LOGIC;
+    m_axi_card_hbm_p8_araddr : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_ADDR_WIDTH-1 downto 0);
+    m_axi_card_hbm_p8_arid : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_ID_WIDTH-1 downto 0);
+    m_axi_card_hbm_p8_arlen : OUT STD_LOGIC_VECTOR (7 downto 0);
+    m_axi_card_hbm_p8_arsize : OUT STD_LOGIC_VECTOR (2 downto 0);
+    m_axi_card_hbm_p8_arburst : OUT STD_LOGIC_VECTOR (1 downto 0);
+    m_axi_card_hbm_p8_arlock : OUT STD_LOGIC_VECTOR (1 downto 0);
+    m_axi_card_hbm_p8_arcache : OUT STD_LOGIC_VECTOR (3 downto 0);
+    m_axi_card_hbm_p8_arprot : OUT STD_LOGIC_VECTOR (2 downto 0);
+    m_axi_card_hbm_p8_arqos : OUT STD_LOGIC_VECTOR (3 downto 0);
+    m_axi_card_hbm_p8_arregion : OUT STD_LOGIC_VECTOR (3 downto 0);
+    m_axi_card_hbm_p8_aruser : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_ARUSER_WIDTH-1 downto 0);
+    m_axi_card_hbm_p8_rvalid : IN STD_LOGIC;
+    m_axi_card_hbm_p8_rready : OUT STD_LOGIC;
+    m_axi_card_hbm_p8_rdata : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_DATA_WIDTH-1 downto 0);
+    m_axi_card_hbm_p8_rlast : IN STD_LOGIC;
+    m_axi_card_hbm_p8_rid : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_ID_WIDTH-1 downto 0);
+    m_axi_card_hbm_p8_ruser : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_RUSER_WIDTH-1 downto 0);
+    m_axi_card_hbm_p8_rresp : IN STD_LOGIC_VECTOR (1 downto 0);
+    m_axi_card_hbm_p8_bvalid : IN STD_LOGIC;
+    m_axi_card_hbm_p8_bready : OUT STD_LOGIC;
+    m_axi_card_hbm_p8_bresp : IN STD_LOGIC_VECTOR (1 downto 0);
+    m_axi_card_hbm_p8_bid : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_ID_WIDTH-1 downto 0);
+    m_axi_card_hbm_p8_buser : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_BUSER_WIDTH-1 downto 0);
+  --
+    m_axi_card_hbm_p9_awvalid : OUT STD_LOGIC;
+    m_axi_card_hbm_p9_awready : IN STD_LOGIC;
+    m_axi_card_hbm_p9_awaddr : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_ADDR_WIDTH-1 downto 0);
+    m_axi_card_hbm_p9_awid : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_ID_WIDTH-1 downto 0);
+    m_axi_card_hbm_p9_awlen : OUT STD_LOGIC_VECTOR (7 downto 0);
+    m_axi_card_hbm_p9_awsize : OUT STD_LOGIC_VECTOR (2 downto 0);
+    m_axi_card_hbm_p9_awburst : OUT STD_LOGIC_VECTOR (1 downto 0);
+    m_axi_card_hbm_p9_awlock : OUT STD_LOGIC_VECTOR (1 downto 0);
+    m_axi_card_hbm_p9_awcache : OUT STD_LOGIC_VECTOR (3 downto 0);
+    m_axi_card_hbm_p9_awprot : OUT STD_LOGIC_VECTOR (2 downto 0);
+    m_axi_card_hbm_p9_awqos : OUT STD_LOGIC_VECTOR (3 downto 0);
+    m_axi_card_hbm_p9_awregion : OUT STD_LOGIC_VECTOR (3 downto 0);
+    m_axi_card_hbm_p9_awuser : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_AWUSER_WIDTH-1 downto 0);
+    m_axi_card_hbm_p9_wvalid : OUT STD_LOGIC;
+    m_axi_card_hbm_p9_wready : IN STD_LOGIC;
+    m_axi_card_hbm_p9_wdata : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_DATA_WIDTH-1 downto 0);
+    m_axi_card_hbm_p9_wstrb : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_DATA_WIDTH/8-1 downto 0);
+    m_axi_card_hbm_p9_wlast : OUT STD_LOGIC;
+    m_axi_card_hbm_p9_wid : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_ID_WIDTH-1 downto 0);
+    m_axi_card_hbm_p9_wuser : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_WUSER_WIDTH-1 downto 0);
+    m_axi_card_hbm_p9_arvalid : OUT STD_LOGIC;
+    m_axi_card_hbm_p9_arready : IN STD_LOGIC;
+    m_axi_card_hbm_p9_araddr : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_ADDR_WIDTH-1 downto 0);
+    m_axi_card_hbm_p9_arid : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_ID_WIDTH-1 downto 0);
+    m_axi_card_hbm_p9_arlen : OUT STD_LOGIC_VECTOR (7 downto 0);
+    m_axi_card_hbm_p9_arsize : OUT STD_LOGIC_VECTOR (2 downto 0);
+    m_axi_card_hbm_p9_arburst : OUT STD_LOGIC_VECTOR (1 downto 0);
+    m_axi_card_hbm_p9_arlock : OUT STD_LOGIC_VECTOR (1 downto 0);
+    m_axi_card_hbm_p9_arcache : OUT STD_LOGIC_VECTOR (3 downto 0);
+    m_axi_card_hbm_p9_arprot : OUT STD_LOGIC_VECTOR (2 downto 0);
+    m_axi_card_hbm_p9_arqos : OUT STD_LOGIC_VECTOR (3 downto 0);
+    m_axi_card_hbm_p9_arregion : OUT STD_LOGIC_VECTOR (3 downto 0);
+    m_axi_card_hbm_p9_aruser : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_ARUSER_WIDTH-1 downto 0);
+    m_axi_card_hbm_p9_rvalid : IN STD_LOGIC;
+    m_axi_card_hbm_p9_rready : OUT STD_LOGIC;
+    m_axi_card_hbm_p9_rdata : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_DATA_WIDTH-1 downto 0);
+    m_axi_card_hbm_p9_rlast : IN STD_LOGIC;
+    m_axi_card_hbm_p9_rid : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_ID_WIDTH-1 downto 0);
+    m_axi_card_hbm_p9_ruser : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_RUSER_WIDTH-1 downto 0);
+    m_axi_card_hbm_p9_rresp : IN STD_LOGIC_VECTOR (1 downto 0);
+    m_axi_card_hbm_p9_bvalid : IN STD_LOGIC;
+    m_axi_card_hbm_p9_bready : OUT STD_LOGIC;
+    m_axi_card_hbm_p9_bresp : IN STD_LOGIC_VECTOR (1 downto 0);
+    m_axi_card_hbm_p9_bid : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_ID_WIDTH-1 downto 0);
+    m_axi_card_hbm_p9_buser : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_BUSER_WIDTH-1 downto 0);
+  --
+    m_axi_card_hbm_p10_awvalid : OUT STD_LOGIC;
+    m_axi_card_hbm_p10_awready : IN STD_LOGIC;
+    m_axi_card_hbm_p10_awaddr : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_ADDR_WIDTH-1 downto 0);
+    m_axi_card_hbm_p10_awid : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_ID_WIDTH-1 downto 0);
+    m_axi_card_hbm_p10_awlen : OUT STD_LOGIC_VECTOR (7 downto 0);
+    m_axi_card_hbm_p10_awsize : OUT STD_LOGIC_VECTOR (2 downto 0);
+    m_axi_card_hbm_p10_awburst : OUT STD_LOGIC_VECTOR (1 downto 0);
+    m_axi_card_hbm_p10_awlock : OUT STD_LOGIC_VECTOR (1 downto 0);
+    m_axi_card_hbm_p10_awcache : OUT STD_LOGIC_VECTOR (3 downto 0);
+    m_axi_card_hbm_p10_awprot : OUT STD_LOGIC_VECTOR (2 downto 0);
+    m_axi_card_hbm_p10_awqos : OUT STD_LOGIC_VECTOR (3 downto 0);
+    m_axi_card_hbm_p10_awregion : OUT STD_LOGIC_VECTOR (3 downto 0);
+    m_axi_card_hbm_p10_awuser : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_AWUSER_WIDTH-1 downto 0);
+    m_axi_card_hbm_p10_wvalid : OUT STD_LOGIC;
+    m_axi_card_hbm_p10_wready : IN STD_LOGIC;
+    m_axi_card_hbm_p10_wdata : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_DATA_WIDTH-1 downto 0);
+    m_axi_card_hbm_p10_wstrb : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_DATA_WIDTH/8-1 downto 0);
+    m_axi_card_hbm_p10_wlast : OUT STD_LOGIC;
+    m_axi_card_hbm_p10_wid : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_ID_WIDTH-1 downto 0);
+    m_axi_card_hbm_p10_wuser : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_WUSER_WIDTH-1 downto 0);
+    m_axi_card_hbm_p10_arvalid : OUT STD_LOGIC;
+    m_axi_card_hbm_p10_arready : IN STD_LOGIC;
+    m_axi_card_hbm_p10_araddr : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_ADDR_WIDTH-1 downto 0);
+    m_axi_card_hbm_p10_arid : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_ID_WIDTH-1 downto 0);
+    m_axi_card_hbm_p10_arlen : OUT STD_LOGIC_VECTOR (7 downto 0);
+    m_axi_card_hbm_p10_arsize : OUT STD_LOGIC_VECTOR (2 downto 0);
+    m_axi_card_hbm_p10_arburst : OUT STD_LOGIC_VECTOR (1 downto 0);
+    m_axi_card_hbm_p10_arlock : OUT STD_LOGIC_VECTOR (1 downto 0);
+    m_axi_card_hbm_p10_arcache : OUT STD_LOGIC_VECTOR (3 downto 0);
+    m_axi_card_hbm_p10_arprot : OUT STD_LOGIC_VECTOR (2 downto 0);
+    m_axi_card_hbm_p10_arqos : OUT STD_LOGIC_VECTOR (3 downto 0);
+    m_axi_card_hbm_p10_arregion : OUT STD_LOGIC_VECTOR (3 downto 0);
+    m_axi_card_hbm_p10_aruser : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_ARUSER_WIDTH-1 downto 0);
+    m_axi_card_hbm_p10_rvalid : IN STD_LOGIC;
+    m_axi_card_hbm_p10_rready : OUT STD_LOGIC;
+    m_axi_card_hbm_p10_rdata : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_DATA_WIDTH-1 downto 0);
+    m_axi_card_hbm_p10_rlast : IN STD_LOGIC;
+    m_axi_card_hbm_p10_rid : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_ID_WIDTH-1 downto 0);
+    m_axi_card_hbm_p10_ruser : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_RUSER_WIDTH-1 downto 0);
+    m_axi_card_hbm_p10_rresp : IN STD_LOGIC_VECTOR (1 downto 0);
+    m_axi_card_hbm_p10_bvalid : IN STD_LOGIC;
+    m_axi_card_hbm_p10_bready : OUT STD_LOGIC;
+    m_axi_card_hbm_p10_bresp : IN STD_LOGIC_VECTOR (1 downto 0);
+    m_axi_card_hbm_p10_bid : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_ID_WIDTH-1 downto 0);
+    m_axi_card_hbm_p10_buser : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_BUSER_WIDTH-1 downto 0);
+  --
+    m_axi_card_hbm_p11_awvalid : OUT STD_LOGIC;
+    m_axi_card_hbm_p11_awready : IN STD_LOGIC;
+    m_axi_card_hbm_p11_awaddr : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_ADDR_WIDTH-1 downto 0);
+    m_axi_card_hbm_p11_awid : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_ID_WIDTH-1 downto 0);
+    m_axi_card_hbm_p11_awlen : OUT STD_LOGIC_VECTOR (7 downto 0);
+    m_axi_card_hbm_p11_awsize : OUT STD_LOGIC_VECTOR (2 downto 0);
+    m_axi_card_hbm_p11_awburst : OUT STD_LOGIC_VECTOR (1 downto 0);
+    m_axi_card_hbm_p11_awlock : OUT STD_LOGIC_VECTOR (1 downto 0);
+    m_axi_card_hbm_p11_awcache : OUT STD_LOGIC_VECTOR (3 downto 0);
+    m_axi_card_hbm_p11_awprot : OUT STD_LOGIC_VECTOR (2 downto 0);
+    m_axi_card_hbm_p11_awqos : OUT STD_LOGIC_VECTOR (3 downto 0);
+    m_axi_card_hbm_p11_awregion : OUT STD_LOGIC_VECTOR (3 downto 0);
+    m_axi_card_hbm_p11_awuser : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_AWUSER_WIDTH-1 downto 0);
+    m_axi_card_hbm_p11_wvalid : OUT STD_LOGIC;
+    m_axi_card_hbm_p11_wready : IN STD_LOGIC;
+    m_axi_card_hbm_p11_wdata : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_DATA_WIDTH-1 downto 0);
+    m_axi_card_hbm_p11_wstrb : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_DATA_WIDTH/8-1 downto 0);
+    m_axi_card_hbm_p11_wlast : OUT STD_LOGIC;
+    m_axi_card_hbm_p11_wid : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_ID_WIDTH-1 downto 0);
+    m_axi_card_hbm_p11_wuser : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_WUSER_WIDTH-1 downto 0);
+    m_axi_card_hbm_p11_arvalid : OUT STD_LOGIC;
+    m_axi_card_hbm_p11_arready : IN STD_LOGIC;
+    m_axi_card_hbm_p11_araddr : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_ADDR_WIDTH-1 downto 0);
+    m_axi_card_hbm_p11_arid : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_ID_WIDTH-1 downto 0);
+    m_axi_card_hbm_p11_arlen : OUT STD_LOGIC_VECTOR (7 downto 0);
+    m_axi_card_hbm_p11_arsize : OUT STD_LOGIC_VECTOR (2 downto 0);
+    m_axi_card_hbm_p11_arburst : OUT STD_LOGIC_VECTOR (1 downto 0);
+    m_axi_card_hbm_p11_arlock : OUT STD_LOGIC_VECTOR (1 downto 0);
+    m_axi_card_hbm_p11_arcache : OUT STD_LOGIC_VECTOR (3 downto 0);
+    m_axi_card_hbm_p11_arprot : OUT STD_LOGIC_VECTOR (2 downto 0);
+    m_axi_card_hbm_p11_arqos : OUT STD_LOGIC_VECTOR (3 downto 0);
+    m_axi_card_hbm_p11_arregion : OUT STD_LOGIC_VECTOR (3 downto 0);
+    m_axi_card_hbm_p11_aruser : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_ARUSER_WIDTH-1 downto 0);
+    m_axi_card_hbm_p11_rvalid : IN STD_LOGIC;
+    m_axi_card_hbm_p11_rready : OUT STD_LOGIC;
+    m_axi_card_hbm_p11_rdata : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_DATA_WIDTH-1 downto 0);
+    m_axi_card_hbm_p11_rlast : IN STD_LOGIC;
+    m_axi_card_hbm_p11_rid : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_ID_WIDTH-1 downto 0);
+    m_axi_card_hbm_p11_ruser : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_RUSER_WIDTH-1 downto 0);
+    m_axi_card_hbm_p11_rresp : IN STD_LOGIC_VECTOR (1 downto 0);
+    m_axi_card_hbm_p11_bvalid : IN STD_LOGIC;
+    m_axi_card_hbm_p11_bready : OUT STD_LOGIC;
+    m_axi_card_hbm_p11_bresp : IN STD_LOGIC_VECTOR (1 downto 0);
+    m_axi_card_hbm_p11_bid : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_ID_WIDTH-1 downto 0);
+    m_axi_card_hbm_p11_buser : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_BUSER_WIDTH-1 downto 0);
 #endif
   --
     -- AXI Control Register Interface
@@ -713,6 +897,42 @@ ARCHITECTURE STRUCTURE OF action_wrapper IS
       C_M_AXI_CARD_HBM_P7_ARUSER_WIDTH    : INTEGER;
       C_M_AXI_CARD_HBM_P7_RUSER_WIDTH     : INTEGER;
       C_M_AXI_CARD_HBM_P7_BUSER_WIDTH     : INTEGER;
+--
+      C_M_AXI_CARD_HBM_P8_ADDR_WIDTH      : INTEGER;
+      C_M_AXI_CARD_HBM_P8_ID_WIDTH        : INTEGER;
+      C_M_AXI_CARD_HBM_P8_AWUSER_WIDTH    : INTEGER;
+      C_M_AXI_CARD_HBM_P8_DATA_WIDTH      : INTEGER;
+      C_M_AXI_CARD_HBM_P8_WUSER_WIDTH     : INTEGER;
+      C_M_AXI_CARD_HBM_P8_ARUSER_WIDTH    : INTEGER;
+      C_M_AXI_CARD_HBM_P8_RUSER_WIDTH     : INTEGER;
+      C_M_AXI_CARD_HBM_P8_BUSER_WIDTH     : INTEGER;
+--
+      C_M_AXI_CARD_HBM_P9_ADDR_WIDTH      : INTEGER;
+      C_M_AXI_CARD_HBM_P9_ID_WIDTH        : INTEGER;
+      C_M_AXI_CARD_HBM_P9_AWUSER_WIDTH    : INTEGER;
+      C_M_AXI_CARD_HBM_P9_DATA_WIDTH      : INTEGER;
+      C_M_AXI_CARD_HBM_P9_WUSER_WIDTH     : INTEGER;
+      C_M_AXI_CARD_HBM_P9_ARUSER_WIDTH    : INTEGER;
+      C_M_AXI_CARD_HBM_P9_RUSER_WIDTH     : INTEGER;
+      C_M_AXI_CARD_HBM_P9_BUSER_WIDTH     : INTEGER;
+--
+      C_M_AXI_CARD_HBM_P10_ADDR_WIDTH      : INTEGER;
+      C_M_AXI_CARD_HBM_P10_ID_WIDTH        : INTEGER;
+      C_M_AXI_CARD_HBM_P10_AWUSER_WIDTH    : INTEGER;
+      C_M_AXI_CARD_HBM_P10_DATA_WIDTH      : INTEGER;
+      C_M_AXI_CARD_HBM_P10_WUSER_WIDTH     : INTEGER;
+      C_M_AXI_CARD_HBM_P10_ARUSER_WIDTH    : INTEGER;
+      C_M_AXI_CARD_HBM_P10_RUSER_WIDTH     : INTEGER;
+      C_M_AXI_CARD_HBM_P10_BUSER_WIDTH     : INTEGER;
+--
+      C_M_AXI_CARD_HBM_P11_ADDR_WIDTH      : INTEGER;
+      C_M_AXI_CARD_HBM_P11_ID_WIDTH        : INTEGER;
+      C_M_AXI_CARD_HBM_P11_AWUSER_WIDTH    : INTEGER;
+      C_M_AXI_CARD_HBM_P11_DATA_WIDTH      : INTEGER;
+      C_M_AXI_CARD_HBM_P11_WUSER_WIDTH     : INTEGER;
+      C_M_AXI_CARD_HBM_P11_ARUSER_WIDTH    : INTEGER;
+      C_M_AXI_CARD_HBM_P11_RUSER_WIDTH     : INTEGER;
+      C_M_AXI_CARD_HBM_P11_BUSER_WIDTH     : INTEGER;
 #endif
 --
       -- Parameters for Axi Slave Bus Interface AXI_CTRL_REG
@@ -1218,6 +1438,190 @@ ARCHITECTURE STRUCTURE OF action_wrapper IS
       m_axi_card_hbm_p7_bresp : IN STD_LOGIC_VECTOR (1 downto 0);
       m_axi_card_hbm_p7_bid : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_P7_ID_WIDTH-1 downto 0);
       m_axi_card_hbm_p7_buser : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_P7_BUSER_WIDTH-1 downto 0);
+--
+      m_axi_card_hbm_p8_awvalid : OUT STD_LOGIC;
+      m_axi_card_hbm_p8_awready : IN STD_LOGIC;
+      m_axi_card_hbm_p8_awaddr : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p8_ADDR_WIDTH-1 downto 0);
+      m_axi_card_hbm_p8_awid : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p8_ID_WIDTH-1 downto 0);
+      m_axi_card_hbm_p8_awlen : OUT STD_LOGIC_VECTOR (7 downto 0);
+      m_axi_card_hbm_p8_awsize : OUT STD_LOGIC_VECTOR (2 downto 0);
+      m_axi_card_hbm_p8_awburst : OUT STD_LOGIC_VECTOR (1 downto 0);
+      m_axi_card_hbm_p8_awlock : OUT STD_LOGIC_VECTOR (1 downto 0);
+      m_axi_card_hbm_p8_awcache : OUT STD_LOGIC_VECTOR (3 downto 0);
+      m_axi_card_hbm_p8_awprot : OUT STD_LOGIC_VECTOR (2 downto 0);
+      m_axi_card_hbm_p8_awqos : OUT STD_LOGIC_VECTOR (3 downto 0);
+      m_axi_card_hbm_p8_awregion : OUT STD_LOGIC_VECTOR (3 downto 0);
+      m_axi_card_hbm_p8_awuser : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p8_AWUSER_WIDTH-1 downto 0);
+      m_axi_card_hbm_p8_wvalid : OUT STD_LOGIC;
+      m_axi_card_hbm_p8_wready : IN STD_LOGIC;
+      m_axi_card_hbm_p8_wdata : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p8_DATA_WIDTH-1 downto 0);
+      m_axi_card_hbm_p8_wstrb : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p8_DATA_WIDTH/8-1 downto 0);
+      m_axi_card_hbm_p8_wlast : OUT STD_LOGIC;
+      m_axi_card_hbm_p8_wid : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p8_ID_WIDTH-1 downto 0);
+      m_axi_card_hbm_p8_wuser : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p8_WUSER_WIDTH-1 downto 0);
+      m_axi_card_hbm_p8_arvalid : OUT STD_LOGIC;
+      m_axi_card_hbm_p8_arready : IN STD_LOGIC;
+      m_axi_card_hbm_p8_araddr : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p8_ADDR_WIDTH-1 downto 0);
+      m_axi_card_hbm_p8_arid : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p8_ID_WIDTH-1 downto 0);
+      m_axi_card_hbm_p8_arlen : OUT STD_LOGIC_VECTOR (7 downto 0);
+      m_axi_card_hbm_p8_arsize : OUT STD_LOGIC_VECTOR (2 downto 0);
+      m_axi_card_hbm_p8_arburst : OUT STD_LOGIC_VECTOR (1 downto 0);
+      m_axi_card_hbm_p8_arlock : OUT STD_LOGIC_VECTOR (1 downto 0);
+      m_axi_card_hbm_p8_arcache : OUT STD_LOGIC_VECTOR (3 downto 0);
+      m_axi_card_hbm_p8_arprot : OUT STD_LOGIC_VECTOR (2 downto 0);
+      m_axi_card_hbm_p8_arqos : OUT STD_LOGIC_VECTOR (3 downto 0);
+      m_axi_card_hbm_p8_arregion : OUT STD_LOGIC_VECTOR (3 downto 0);
+      m_axi_card_hbm_p8_aruser : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p8_ARUSER_WIDTH-1 downto 0);
+      m_axi_card_hbm_p8_rvalid : IN STD_LOGIC;
+      m_axi_card_hbm_p8_rready : OUT STD_LOGIC;
+      m_axi_card_hbm_p8_rdata : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p8_DATA_WIDTH-1 downto 0);
+      m_axi_card_hbm_p8_rlast : IN STD_LOGIC;
+      m_axi_card_hbm_p8_rid : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p8_ID_WIDTH-1 downto 0);
+      m_axi_card_hbm_p8_ruser : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p8_RUSER_WIDTH-1 downto 0);
+      m_axi_card_hbm_p8_rresp : IN STD_LOGIC_VECTOR (1 downto 0);
+      m_axi_card_hbm_p8_bvalid : IN STD_LOGIC;
+      m_axi_card_hbm_p8_bready : OUT STD_LOGIC;
+      m_axi_card_hbm_p8_bresp : IN STD_LOGIC_VECTOR (1 downto 0);
+      m_axi_card_hbm_p8_bid : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p8_ID_WIDTH-1 downto 0);
+      m_axi_card_hbm_p8_buser : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p8_BUSER_WIDTH-1 downto 0);
+--
+      m_axi_card_hbm_p9_awvalid : OUT STD_LOGIC;
+      m_axi_card_hbm_p9_awready : IN STD_LOGIC;
+      m_axi_card_hbm_p9_awaddr : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p9_ADDR_WIDTH-1 downto 0);
+      m_axi_card_hbm_p9_awid : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p9_ID_WIDTH-1 downto 0);
+      m_axi_card_hbm_p9_awlen : OUT STD_LOGIC_VECTOR (7 downto 0);
+      m_axi_card_hbm_p9_awsize : OUT STD_LOGIC_VECTOR (2 downto 0);
+      m_axi_card_hbm_p9_awburst : OUT STD_LOGIC_VECTOR (1 downto 0);
+      m_axi_card_hbm_p9_awlock : OUT STD_LOGIC_VECTOR (1 downto 0);
+      m_axi_card_hbm_p9_awcache : OUT STD_LOGIC_VECTOR (3 downto 0);
+      m_axi_card_hbm_p9_awprot : OUT STD_LOGIC_VECTOR (2 downto 0);
+      m_axi_card_hbm_p9_awqos : OUT STD_LOGIC_VECTOR (3 downto 0);
+      m_axi_card_hbm_p9_awregion : OUT STD_LOGIC_VECTOR (3 downto 0);
+      m_axi_card_hbm_p9_awuser : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p9_AWUSER_WIDTH-1 downto 0);
+      m_axi_card_hbm_p9_wvalid : OUT STD_LOGIC;
+      m_axi_card_hbm_p9_wready : IN STD_LOGIC;
+      m_axi_card_hbm_p9_wdata : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p9_DATA_WIDTH-1 downto 0);
+      m_axi_card_hbm_p9_wstrb : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p9_DATA_WIDTH/8-1 downto 0);
+      m_axi_card_hbm_p9_wlast : OUT STD_LOGIC;
+      m_axi_card_hbm_p9_wid : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p9_ID_WIDTH-1 downto 0);
+      m_axi_card_hbm_p9_wuser : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p9_WUSER_WIDTH-1 downto 0);
+      m_axi_card_hbm_p9_arvalid : OUT STD_LOGIC;
+      m_axi_card_hbm_p9_arready : IN STD_LOGIC;
+      m_axi_card_hbm_p9_araddr : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p9_ADDR_WIDTH-1 downto 0);
+      m_axi_card_hbm_p9_arid : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p9_ID_WIDTH-1 downto 0);
+      m_axi_card_hbm_p9_arlen : OUT STD_LOGIC_VECTOR (7 downto 0);
+      m_axi_card_hbm_p9_arsize : OUT STD_LOGIC_VECTOR (2 downto 0);
+      m_axi_card_hbm_p9_arburst : OUT STD_LOGIC_VECTOR (1 downto 0);
+      m_axi_card_hbm_p9_arlock : OUT STD_LOGIC_VECTOR (1 downto 0);
+      m_axi_card_hbm_p9_arcache : OUT STD_LOGIC_VECTOR (3 downto 0);
+      m_axi_card_hbm_p9_arprot : OUT STD_LOGIC_VECTOR (2 downto 0);
+      m_axi_card_hbm_p9_arqos : OUT STD_LOGIC_VECTOR (3 downto 0);
+      m_axi_card_hbm_p9_arregion : OUT STD_LOGIC_VECTOR (3 downto 0);
+      m_axi_card_hbm_p9_aruser : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p9_ARUSER_WIDTH-1 downto 0);
+      m_axi_card_hbm_p9_rvalid : IN STD_LOGIC;
+      m_axi_card_hbm_p9_rready : OUT STD_LOGIC;
+      m_axi_card_hbm_p9_rdata : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p9_DATA_WIDTH-1 downto 0);
+      m_axi_card_hbm_p9_rlast : IN STD_LOGIC;
+      m_axi_card_hbm_p9_rid : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p9_ID_WIDTH-1 downto 0);
+      m_axi_card_hbm_p9_ruser : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p9_RUSER_WIDTH-1 downto 0);
+      m_axi_card_hbm_p9_rresp : IN STD_LOGIC_VECTOR (1 downto 0);
+      m_axi_card_hbm_p9_bvalid : IN STD_LOGIC;
+      m_axi_card_hbm_p9_bready : OUT STD_LOGIC;
+      m_axi_card_hbm_p9_bresp : IN STD_LOGIC_VECTOR (1 downto 0);
+      m_axi_card_hbm_p9_bid : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p9_ID_WIDTH-1 downto 0);
+      m_axi_card_hbm_p9_buser : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p9_BUSER_WIDTH-1 downto 0);
+--
+      m_axi_card_hbm_p10_awvalid : OUT STD_LOGIC;
+      m_axi_card_hbm_p10_awready : IN STD_LOGIC;
+      m_axi_card_hbm_p10_awaddr : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p10_ADDR_WIDTH-1 downto 0);
+      m_axi_card_hbm_p10_awid : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p10_ID_WIDTH-1 downto 0);
+      m_axi_card_hbm_p10_awlen : OUT STD_LOGIC_VECTOR (7 downto 0);
+      m_axi_card_hbm_p10_awsize : OUT STD_LOGIC_VECTOR (2 downto 0);
+      m_axi_card_hbm_p10_awburst : OUT STD_LOGIC_VECTOR (1 downto 0);
+      m_axi_card_hbm_p10_awlock : OUT STD_LOGIC_VECTOR (1 downto 0);
+      m_axi_card_hbm_p10_awcache : OUT STD_LOGIC_VECTOR (3 downto 0);
+      m_axi_card_hbm_p10_awprot : OUT STD_LOGIC_VECTOR (2 downto 0);
+      m_axi_card_hbm_p10_awqos : OUT STD_LOGIC_VECTOR (3 downto 0);
+      m_axi_card_hbm_p10_awregion : OUT STD_LOGIC_VECTOR (3 downto 0);
+      m_axi_card_hbm_p10_awuser : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p10_AWUSER_WIDTH-1 downto 0);
+      m_axi_card_hbm_p10_wvalid : OUT STD_LOGIC;
+      m_axi_card_hbm_p10_wready : IN STD_LOGIC;
+      m_axi_card_hbm_p10_wdata : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p10_DATA_WIDTH-1 downto 0);
+      m_axi_card_hbm_p10_wstrb : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p10_DATA_WIDTH/8-1 downto 0);
+      m_axi_card_hbm_p10_wlast : OUT STD_LOGIC;
+      m_axi_card_hbm_p10_wid : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p10_ID_WIDTH-1 downto 0);
+      m_axi_card_hbm_p10_wuser : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p10_WUSER_WIDTH-1 downto 0);
+      m_axi_card_hbm_p10_arvalid : OUT STD_LOGIC;
+      m_axi_card_hbm_p10_arready : IN STD_LOGIC;
+      m_axi_card_hbm_p10_araddr : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p10_ADDR_WIDTH-1 downto 0);
+      m_axi_card_hbm_p10_arid : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p10_ID_WIDTH-1 downto 0);
+      m_axi_card_hbm_p10_arlen : OUT STD_LOGIC_VECTOR (7 downto 0);
+      m_axi_card_hbm_p10_arsize : OUT STD_LOGIC_VECTOR (2 downto 0);
+      m_axi_card_hbm_p10_arburst : OUT STD_LOGIC_VECTOR (1 downto 0);
+      m_axi_card_hbm_p10_arlock : OUT STD_LOGIC_VECTOR (1 downto 0);
+      m_axi_card_hbm_p10_arcache : OUT STD_LOGIC_VECTOR (3 downto 0);
+      m_axi_card_hbm_p10_arprot : OUT STD_LOGIC_VECTOR (2 downto 0);
+      m_axi_card_hbm_p10_arqos : OUT STD_LOGIC_VECTOR (3 downto 0);
+      m_axi_card_hbm_p10_arregion : OUT STD_LOGIC_VECTOR (3 downto 0);
+      m_axi_card_hbm_p10_aruser : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p10_ARUSER_WIDTH-1 downto 0);
+      m_axi_card_hbm_p10_rvalid : IN STD_LOGIC;
+      m_axi_card_hbm_p10_rready : OUT STD_LOGIC;
+      m_axi_card_hbm_p10_rdata : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p10_DATA_WIDTH-1 downto 0);
+      m_axi_card_hbm_p10_rlast : IN STD_LOGIC;
+      m_axi_card_hbm_p10_rid : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p10_ID_WIDTH-1 downto 0);
+      m_axi_card_hbm_p10_ruser : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p10_RUSER_WIDTH-1 downto 0);
+      m_axi_card_hbm_p10_rresp : IN STD_LOGIC_VECTOR (1 downto 0);
+      m_axi_card_hbm_p10_bvalid : IN STD_LOGIC;
+      m_axi_card_hbm_p10_bready : OUT STD_LOGIC;
+      m_axi_card_hbm_p10_bresp : IN STD_LOGIC_VECTOR (1 downto 0);
+      m_axi_card_hbm_p10_bid : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p10_ID_WIDTH-1 downto 0);
+      m_axi_card_hbm_p10_buser : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p10_BUSER_WIDTH-1 downto 0);
+--
+      m_axi_card_hbm_p11_awvalid : OUT STD_LOGIC;
+      m_axi_card_hbm_p11_awready : IN STD_LOGIC;
+      m_axi_card_hbm_p11_awaddr : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p11_ADDR_WIDTH-1 downto 0);
+      m_axi_card_hbm_p11_awid : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p11_ID_WIDTH-1 downto 0);
+      m_axi_card_hbm_p11_awlen : OUT STD_LOGIC_VECTOR (7 downto 0);
+      m_axi_card_hbm_p11_awsize : OUT STD_LOGIC_VECTOR (2 downto 0);
+      m_axi_card_hbm_p11_awburst : OUT STD_LOGIC_VECTOR (1 downto 0);
+      m_axi_card_hbm_p11_awlock : OUT STD_LOGIC_VECTOR (1 downto 0);
+      m_axi_card_hbm_p11_awcache : OUT STD_LOGIC_VECTOR (3 downto 0);
+      m_axi_card_hbm_p11_awprot : OUT STD_LOGIC_VECTOR (2 downto 0);
+      m_axi_card_hbm_p11_awqos : OUT STD_LOGIC_VECTOR (3 downto 0);
+      m_axi_card_hbm_p11_awregion : OUT STD_LOGIC_VECTOR (3 downto 0);
+      m_axi_card_hbm_p11_awuser : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p11_AWUSER_WIDTH-1 downto 0);
+      m_axi_card_hbm_p11_wvalid : OUT STD_LOGIC;
+      m_axi_card_hbm_p11_wready : IN STD_LOGIC;
+      m_axi_card_hbm_p11_wdata : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p11_DATA_WIDTH-1 downto 0);
+      m_axi_card_hbm_p11_wstrb : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p11_DATA_WIDTH/8-1 downto 0);
+      m_axi_card_hbm_p11_wlast : OUT STD_LOGIC;
+      m_axi_card_hbm_p11_wid : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p11_ID_WIDTH-1 downto 0);
+      m_axi_card_hbm_p11_wuser : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p11_WUSER_WIDTH-1 downto 0);
+      m_axi_card_hbm_p11_arvalid : OUT STD_LOGIC;
+      m_axi_card_hbm_p11_arready : IN STD_LOGIC;
+      m_axi_card_hbm_p11_araddr : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p11_ADDR_WIDTH-1 downto 0);
+      m_axi_card_hbm_p11_arid : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p11_ID_WIDTH-1 downto 0);
+      m_axi_card_hbm_p11_arlen : OUT STD_LOGIC_VECTOR (7 downto 0);
+      m_axi_card_hbm_p11_arsize : OUT STD_LOGIC_VECTOR (2 downto 0);
+      m_axi_card_hbm_p11_arburst : OUT STD_LOGIC_VECTOR (1 downto 0);
+      m_axi_card_hbm_p11_arlock : OUT STD_LOGIC_VECTOR (1 downto 0);
+      m_axi_card_hbm_p11_arcache : OUT STD_LOGIC_VECTOR (3 downto 0);
+      m_axi_card_hbm_p11_arprot : OUT STD_LOGIC_VECTOR (2 downto 0);
+      m_axi_card_hbm_p11_arqos : OUT STD_LOGIC_VECTOR (3 downto 0);
+      m_axi_card_hbm_p11_arregion : OUT STD_LOGIC_VECTOR (3 downto 0);
+      m_axi_card_hbm_p11_aruser : OUT STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p11_ARUSER_WIDTH-1 downto 0);
+      m_axi_card_hbm_p11_rvalid : IN STD_LOGIC;
+      m_axi_card_hbm_p11_rready : OUT STD_LOGIC;
+      m_axi_card_hbm_p11_rdata : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p11_DATA_WIDTH-1 downto 0);
+      m_axi_card_hbm_p11_rlast : IN STD_LOGIC;
+      m_axi_card_hbm_p11_rid : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p11_ID_WIDTH-1 downto 0);
+      m_axi_card_hbm_p11_ruser : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p11_RUSER_WIDTH-1 downto 0);
+      m_axi_card_hbm_p11_rresp : IN STD_LOGIC_VECTOR (1 downto 0);
+      m_axi_card_hbm_p11_bvalid : IN STD_LOGIC;
+      m_axi_card_hbm_p11_bready : OUT STD_LOGIC;
+      m_axi_card_hbm_p11_bresp : IN STD_LOGIC_VECTOR (1 downto 0);
+      m_axi_card_hbm_p11_bid : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p11_ID_WIDTH-1 downto 0);
+      m_axi_card_hbm_p11_buser : IN STD_LOGIC_VECTOR (C_M_AXI_CARD_HBM_p11_BUSER_WIDTH-1 downto 0);
 #endif
 --
       --
@@ -1391,6 +1795,42 @@ BEGIN
     C_M_AXI_CARD_HBM_P7_ARUSER_WIDTH => C_M_AXI_CARD_HBM_ARUSER_WIDTH,
     C_M_AXI_CARD_HBM_P7_RUSER_WIDTH  => C_M_AXI_CARD_HBM_RUSER_WIDTH,
     C_M_AXI_CARD_HBM_P7_BUSER_WIDTH  => C_M_AXI_CARD_HBM_BUSER_WIDTH,
+    -- 
+    C_M_AXI_CARD_HBM_P8_ADDR_WIDTH   => C_M_AXI_CARD_HBM_ADDR_WIDTH,
+    C_M_AXI_CARD_HBM_P8_ID_WIDTH     => C_M_AXI_CARD_HBM_ID_WIDTH,
+    C_M_AXI_CARD_HBM_P8_AWUSER_WIDTH => C_M_AXI_CARD_HBM_AWUSER_WIDTH,
+    C_M_AXI_CARD_HBM_P8_DATA_WIDTH   => C_M_AXI_CARD_HBM_DATA_WIDTH,
+    C_M_AXI_CARD_HBM_P8_WUSER_WIDTH  => C_M_AXI_CARD_HBM_WUSER_WIDTH,
+    C_M_AXI_CARD_HBM_P8_ARUSER_WIDTH => C_M_AXI_CARD_HBM_ARUSER_WIDTH,
+    C_M_AXI_CARD_HBM_P8_RUSER_WIDTH  => C_M_AXI_CARD_HBM_RUSER_WIDTH,
+    C_M_AXI_CARD_HBM_P8_BUSER_WIDTH  => C_M_AXI_CARD_HBM_BUSER_WIDTH,
+    -- 
+    C_M_AXI_CARD_HBM_P9_ADDR_WIDTH   => C_M_AXI_CARD_HBM_ADDR_WIDTH,
+    C_M_AXI_CARD_HBM_P9_ID_WIDTH     => C_M_AXI_CARD_HBM_ID_WIDTH,
+    C_M_AXI_CARD_HBM_P9_AWUSER_WIDTH => C_M_AXI_CARD_HBM_AWUSER_WIDTH,
+    C_M_AXI_CARD_HBM_P9_DATA_WIDTH   => C_M_AXI_CARD_HBM_DATA_WIDTH,
+    C_M_AXI_CARD_HBM_P9_WUSER_WIDTH  => C_M_AXI_CARD_HBM_WUSER_WIDTH,
+    C_M_AXI_CARD_HBM_P9_ARUSER_WIDTH => C_M_AXI_CARD_HBM_ARUSER_WIDTH,
+    C_M_AXI_CARD_HBM_P9_RUSER_WIDTH  => C_M_AXI_CARD_HBM_RUSER_WIDTH,
+    C_M_AXI_CARD_HBM_P9_BUSER_WIDTH  => C_M_AXI_CARD_HBM_BUSER_WIDTH,
+    -- 
+    C_M_AXI_CARD_HBM_P10_ADDR_WIDTH   => C_M_AXI_CARD_HBM_ADDR_WIDTH,
+    C_M_AXI_CARD_HBM_P10_ID_WIDTH     => C_M_AXI_CARD_HBM_ID_WIDTH,
+    C_M_AXI_CARD_HBM_P10_AWUSER_WIDTH => C_M_AXI_CARD_HBM_AWUSER_WIDTH,
+    C_M_AXI_CARD_HBM_P10_DATA_WIDTH   => C_M_AXI_CARD_HBM_DATA_WIDTH,
+    C_M_AXI_CARD_HBM_P10_WUSER_WIDTH  => C_M_AXI_CARD_HBM_WUSER_WIDTH,
+    C_M_AXI_CARD_HBM_P10_ARUSER_WIDTH => C_M_AXI_CARD_HBM_ARUSER_WIDTH,
+    C_M_AXI_CARD_HBM_P10_RUSER_WIDTH  => C_M_AXI_CARD_HBM_RUSER_WIDTH,
+    C_M_AXI_CARD_HBM_P10_BUSER_WIDTH  => C_M_AXI_CARD_HBM_BUSER_WIDTH,
+    -- 
+    C_M_AXI_CARD_HBM_P11_ADDR_WIDTH   => C_M_AXI_CARD_HBM_ADDR_WIDTH,
+    C_M_AXI_CARD_HBM_P11_ID_WIDTH     => C_M_AXI_CARD_HBM_ID_WIDTH,
+    C_M_AXI_CARD_HBM_P11_AWUSER_WIDTH => C_M_AXI_CARD_HBM_AWUSER_WIDTH,
+    C_M_AXI_CARD_HBM_P11_DATA_WIDTH   => C_M_AXI_CARD_HBM_DATA_WIDTH,
+    C_M_AXI_CARD_HBM_P11_WUSER_WIDTH  => C_M_AXI_CARD_HBM_WUSER_WIDTH,
+    C_M_AXI_CARD_HBM_P11_ARUSER_WIDTH => C_M_AXI_CARD_HBM_ARUSER_WIDTH,
+    C_M_AXI_CARD_HBM_P11_RUSER_WIDTH  => C_M_AXI_CARD_HBM_RUSER_WIDTH,
+    C_M_AXI_CARD_HBM_P11_BUSER_WIDTH  => C_M_AXI_CARD_HBM_BUSER_WIDTH,
 #endif
     -- Parameters for Axi Slave Bus Interface AXI_CTRL_REG
     C_S_AXI_CTRL_REG_DATA_WIDTH      => C_S_AXI_CTRL_REG_DATA_WIDTH,
@@ -1906,6 +2346,190 @@ BEGIN
     m_axi_card_hbm_p7_wstrb    => m_axi_card_hbm_p7_wstrb,
     m_axi_card_hbm_p7_wuser    => m_axi_card_hbm_p7_wuser,
     m_axi_card_hbm_p7_wvalid   => m_axi_card_hbm_p7_wvalid,
+--
+    m_axi_card_hbm_p8_araddr   => m_axi_card_hbm_p8_araddr(C_M_AXI_CARD_HBM_ADDR_WIDTH-1 downto 0),
+    m_axi_card_hbm_p8_arburst  => m_axi_card_hbm_p8_arburst,
+    m_axi_card_hbm_p8_arcache  => m_axi_card_hbm_p8_arcache,
+    m_axi_card_hbm_p8_arid     => m_axi_card_hbm_p8_arid,
+    m_axi_card_hbm_p8_arlen    => m_axi_card_hbm_p8_arlen,
+    m_axi_card_hbm_p8_arlock   => m_axi_card_hbm_p8_arlock,
+    m_axi_card_hbm_p8_arprot   => m_axi_card_hbm_p8_arprot,
+    m_axi_card_hbm_p8_arqos    => m_axi_card_hbm_p8_arqos,
+    m_axi_card_hbm_p8_arready  => m_axi_card_hbm_p8_arready,
+    m_axi_card_hbm_p8_arregion => m_axi_card_hbm_p8_arregion,
+    m_axi_card_hbm_p8_arsize   => m_axi_card_hbm_p8_arsize,
+    m_axi_card_hbm_p8_aruser   => m_axi_card_hbm_p8_aruser,
+    m_axi_card_hbm_p8_arvalid  => m_axi_card_hbm_p8_arvalid,
+    m_axi_card_hbm_p8_awaddr   => m_axi_card_hbm_p8_awaddr(C_M_AXI_CARD_HBM_ADDR_WIDTH-1 downto 0),
+    m_axi_card_hbm_p8_awburst  => m_axi_card_hbm_p8_awburst,
+    m_axi_card_hbm_p8_awcache  => m_axi_card_hbm_p8_awcache,
+    m_axi_card_hbm_p8_awid     => m_axi_card_hbm_p8_awid,
+    m_axi_card_hbm_p8_awlen    => m_axi_card_hbm_p8_awlen,
+    m_axi_card_hbm_p8_awlock   => m_axi_card_hbm_p8_awlock,
+    m_axi_card_hbm_p8_awprot   => m_axi_card_hbm_p8_awprot,
+    m_axi_card_hbm_p8_awqos    => m_axi_card_hbm_p8_awqos,
+    m_axi_card_hbm_p8_awready  => m_axi_card_hbm_p8_awready,
+    m_axi_card_hbm_p8_awregion => m_axi_card_hbm_p8_awregion,
+    m_axi_card_hbm_p8_awsize   => m_axi_card_hbm_p8_awsize,
+    m_axi_card_hbm_p8_awuser   => m_axi_card_hbm_p8_awuser,
+    m_axi_card_hbm_p8_awvalid  => m_axi_card_hbm_p8_awvalid,
+    m_axi_card_hbm_p8_bid      => m_axi_card_hbm_p8_bid,
+    m_axi_card_hbm_p8_bready   => m_axi_card_hbm_p8_bready,
+    m_axi_card_hbm_p8_bresp    => m_axi_card_hbm_p8_bresp,
+    m_axi_card_hbm_p8_buser    => m_axi_card_hbm_p8_buser,
+    m_axi_card_hbm_p8_bvalid   => m_axi_card_hbm_p8_bvalid,
+    m_axi_card_hbm_p8_rdata    => m_axi_card_hbm_p8_rdata,
+    m_axi_card_hbm_p8_rid      => m_axi_card_hbm_p8_rid,
+    m_axi_card_hbm_p8_rlast    => m_axi_card_hbm_p8_rlast,
+    m_axi_card_hbm_p8_rready   => m_axi_card_hbm_p8_rready,
+    m_axi_card_hbm_p8_rresp    => m_axi_card_hbm_p8_rresp,
+    m_axi_card_hbm_p8_ruser    => m_axi_card_hbm_p8_ruser,
+    m_axi_card_hbm_p8_rvalid   => m_axi_card_hbm_p8_rvalid,
+    m_axi_card_hbm_p8_wdata    => m_axi_card_hbm_p8_wdata,
+    m_axi_card_hbm_p8_wid      => open,
+    m_axi_card_hbm_p8_wlast    => m_axi_card_hbm_p8_wlast,
+    m_axi_card_hbm_p8_wready   => m_axi_card_hbm_p8_wready,
+    m_axi_card_hbm_p8_wstrb    => m_axi_card_hbm_p8_wstrb,
+    m_axi_card_hbm_p8_wuser    => m_axi_card_hbm_p8_wuser,
+    m_axi_card_hbm_p8_wvalid   => m_axi_card_hbm_p8_wvalid,
+--
+    m_axi_card_hbm_p9_araddr   => m_axi_card_hbm_p9_araddr(C_M_AXI_CARD_HBM_ADDR_WIDTH-1 downto 0),
+    m_axi_card_hbm_p9_arburst  => m_axi_card_hbm_p9_arburst,
+    m_axi_card_hbm_p9_arcache  => m_axi_card_hbm_p9_arcache,
+    m_axi_card_hbm_p9_arid     => m_axi_card_hbm_p9_arid,
+    m_axi_card_hbm_p9_arlen    => m_axi_card_hbm_p9_arlen,
+    m_axi_card_hbm_p9_arlock   => m_axi_card_hbm_p9_arlock,
+    m_axi_card_hbm_p9_arprot   => m_axi_card_hbm_p9_arprot,
+    m_axi_card_hbm_p9_arqos    => m_axi_card_hbm_p9_arqos,
+    m_axi_card_hbm_p9_arready  => m_axi_card_hbm_p9_arready,
+    m_axi_card_hbm_p9_arregion => m_axi_card_hbm_p9_arregion,
+    m_axi_card_hbm_p9_arsize   => m_axi_card_hbm_p9_arsize,
+    m_axi_card_hbm_p9_aruser   => m_axi_card_hbm_p9_aruser,
+    m_axi_card_hbm_p9_arvalid  => m_axi_card_hbm_p9_arvalid,
+    m_axi_card_hbm_p9_awaddr   => m_axi_card_hbm_p9_awaddr(C_M_AXI_CARD_HBM_ADDR_WIDTH-1 downto 0),
+    m_axi_card_hbm_p9_awburst  => m_axi_card_hbm_p9_awburst,
+    m_axi_card_hbm_p9_awcache  => m_axi_card_hbm_p9_awcache,
+    m_axi_card_hbm_p9_awid     => m_axi_card_hbm_p9_awid,
+    m_axi_card_hbm_p9_awlen    => m_axi_card_hbm_p9_awlen,
+    m_axi_card_hbm_p9_awlock   => m_axi_card_hbm_p9_awlock,
+    m_axi_card_hbm_p9_awprot   => m_axi_card_hbm_p9_awprot,
+    m_axi_card_hbm_p9_awqos    => m_axi_card_hbm_p9_awqos,
+    m_axi_card_hbm_p9_awready  => m_axi_card_hbm_p9_awready,
+    m_axi_card_hbm_p9_awregion => m_axi_card_hbm_p9_awregion,
+    m_axi_card_hbm_p9_awsize   => m_axi_card_hbm_p9_awsize,
+    m_axi_card_hbm_p9_awuser   => m_axi_card_hbm_p9_awuser,
+    m_axi_card_hbm_p9_awvalid  => m_axi_card_hbm_p9_awvalid,
+    m_axi_card_hbm_p9_bid      => m_axi_card_hbm_p9_bid,
+    m_axi_card_hbm_p9_bready   => m_axi_card_hbm_p9_bready,
+    m_axi_card_hbm_p9_bresp    => m_axi_card_hbm_p9_bresp,
+    m_axi_card_hbm_p9_buser    => m_axi_card_hbm_p9_buser,
+    m_axi_card_hbm_p9_bvalid   => m_axi_card_hbm_p9_bvalid,
+    m_axi_card_hbm_p9_rdata    => m_axi_card_hbm_p9_rdata,
+    m_axi_card_hbm_p9_rid      => m_axi_card_hbm_p9_rid,
+    m_axi_card_hbm_p9_rlast    => m_axi_card_hbm_p9_rlast,
+    m_axi_card_hbm_p9_rready   => m_axi_card_hbm_p9_rready,
+    m_axi_card_hbm_p9_rresp    => m_axi_card_hbm_p9_rresp,
+    m_axi_card_hbm_p9_ruser    => m_axi_card_hbm_p9_ruser,
+    m_axi_card_hbm_p9_rvalid   => m_axi_card_hbm_p9_rvalid,
+    m_axi_card_hbm_p9_wdata    => m_axi_card_hbm_p9_wdata,
+    m_axi_card_hbm_p9_wid      => open,
+    m_axi_card_hbm_p9_wlast    => m_axi_card_hbm_p9_wlast,
+    m_axi_card_hbm_p9_wready   => m_axi_card_hbm_p9_wready,
+    m_axi_card_hbm_p9_wstrb    => m_axi_card_hbm_p9_wstrb,
+    m_axi_card_hbm_p9_wuser    => m_axi_card_hbm_p9_wuser,
+    m_axi_card_hbm_p9_wvalid   => m_axi_card_hbm_p9_wvalid,
+--
+    m_axi_card_hbm_p10_araddr   => m_axi_card_hbm_p10_araddr(C_M_AXI_CARD_HBM_ADDR_WIDTH-1 downto 0),
+    m_axi_card_hbm_p10_arburst  => m_axi_card_hbm_p10_arburst,
+    m_axi_card_hbm_p10_arcache  => m_axi_card_hbm_p10_arcache,
+    m_axi_card_hbm_p10_arid     => m_axi_card_hbm_p10_arid,
+    m_axi_card_hbm_p10_arlen    => m_axi_card_hbm_p10_arlen,
+    m_axi_card_hbm_p10_arlock   => m_axi_card_hbm_p10_arlock,
+    m_axi_card_hbm_p10_arprot   => m_axi_card_hbm_p10_arprot,
+    m_axi_card_hbm_p10_arqos    => m_axi_card_hbm_p10_arqos,
+    m_axi_card_hbm_p10_arready  => m_axi_card_hbm_p10_arready,
+    m_axi_card_hbm_p10_arregion => m_axi_card_hbm_p10_arregion,
+    m_axi_card_hbm_p10_arsize   => m_axi_card_hbm_p10_arsize,
+    m_axi_card_hbm_p10_aruser   => m_axi_card_hbm_p10_aruser,
+    m_axi_card_hbm_p10_arvalid  => m_axi_card_hbm_p10_arvalid,
+    m_axi_card_hbm_p10_awaddr   => m_axi_card_hbm_p10_awaddr(C_M_AXI_CARD_HBM_ADDR_WIDTH-1 downto 0),
+    m_axi_card_hbm_p10_awburst  => m_axi_card_hbm_p10_awburst,
+    m_axi_card_hbm_p10_awcache  => m_axi_card_hbm_p10_awcache,
+    m_axi_card_hbm_p10_awid     => m_axi_card_hbm_p10_awid,
+    m_axi_card_hbm_p10_awlen    => m_axi_card_hbm_p10_awlen,
+    m_axi_card_hbm_p10_awlock   => m_axi_card_hbm_p10_awlock,
+    m_axi_card_hbm_p10_awprot   => m_axi_card_hbm_p10_awprot,
+    m_axi_card_hbm_p10_awqos    => m_axi_card_hbm_p10_awqos,
+    m_axi_card_hbm_p10_awready  => m_axi_card_hbm_p10_awready,
+    m_axi_card_hbm_p10_awregion => m_axi_card_hbm_p10_awregion,
+    m_axi_card_hbm_p10_awsize   => m_axi_card_hbm_p10_awsize,
+    m_axi_card_hbm_p10_awuser   => m_axi_card_hbm_p10_awuser,
+    m_axi_card_hbm_p10_awvalid  => m_axi_card_hbm_p10_awvalid,
+    m_axi_card_hbm_p10_bid      => m_axi_card_hbm_p10_bid,
+    m_axi_card_hbm_p10_bready   => m_axi_card_hbm_p10_bready,
+    m_axi_card_hbm_p10_bresp    => m_axi_card_hbm_p10_bresp,
+    m_axi_card_hbm_p10_buser    => m_axi_card_hbm_p10_buser,
+    m_axi_card_hbm_p10_bvalid   => m_axi_card_hbm_p10_bvalid,
+    m_axi_card_hbm_p10_rdata    => m_axi_card_hbm_p10_rdata,
+    m_axi_card_hbm_p10_rid      => m_axi_card_hbm_p10_rid,
+    m_axi_card_hbm_p10_rlast    => m_axi_card_hbm_p10_rlast,
+    m_axi_card_hbm_p10_rready   => m_axi_card_hbm_p10_rready,
+    m_axi_card_hbm_p10_rresp    => m_axi_card_hbm_p10_rresp,
+    m_axi_card_hbm_p10_ruser    => m_axi_card_hbm_p10_ruser,
+    m_axi_card_hbm_p10_rvalid   => m_axi_card_hbm_p10_rvalid,
+    m_axi_card_hbm_p10_wdata    => m_axi_card_hbm_p10_wdata,
+    m_axi_card_hbm_p10_wid      => open,
+    m_axi_card_hbm_p10_wlast    => m_axi_card_hbm_p10_wlast,
+    m_axi_card_hbm_p10_wready   => m_axi_card_hbm_p10_wready,
+    m_axi_card_hbm_p10_wstrb    => m_axi_card_hbm_p10_wstrb,
+    m_axi_card_hbm_p10_wuser    => m_axi_card_hbm_p10_wuser,
+    m_axi_card_hbm_p10_wvalid   => m_axi_card_hbm_p10_wvalid,
+--
+    m_axi_card_hbm_p11_araddr   => m_axi_card_hbm_p11_araddr(C_M_AXI_CARD_HBM_ADDR_WIDTH-1 downto 0),
+    m_axi_card_hbm_p11_arburst  => m_axi_card_hbm_p11_arburst,
+    m_axi_card_hbm_p11_arcache  => m_axi_card_hbm_p11_arcache,
+    m_axi_card_hbm_p11_arid     => m_axi_card_hbm_p11_arid,
+    m_axi_card_hbm_p11_arlen    => m_axi_card_hbm_p11_arlen,
+    m_axi_card_hbm_p11_arlock   => m_axi_card_hbm_p11_arlock,
+    m_axi_card_hbm_p11_arprot   => m_axi_card_hbm_p11_arprot,
+    m_axi_card_hbm_p11_arqos    => m_axi_card_hbm_p11_arqos,
+    m_axi_card_hbm_p11_arready  => m_axi_card_hbm_p11_arready,
+    m_axi_card_hbm_p11_arregion => m_axi_card_hbm_p11_arregion,
+    m_axi_card_hbm_p11_arsize   => m_axi_card_hbm_p11_arsize,
+    m_axi_card_hbm_p11_aruser   => m_axi_card_hbm_p11_aruser,
+    m_axi_card_hbm_p11_arvalid  => m_axi_card_hbm_p11_arvalid,
+    m_axi_card_hbm_p11_awaddr   => m_axi_card_hbm_p11_awaddr(C_M_AXI_CARD_HBM_ADDR_WIDTH-1 downto 0),
+    m_axi_card_hbm_p11_awburst  => m_axi_card_hbm_p11_awburst,
+    m_axi_card_hbm_p11_awcache  => m_axi_card_hbm_p11_awcache,
+    m_axi_card_hbm_p11_awid     => m_axi_card_hbm_p11_awid,
+    m_axi_card_hbm_p11_awlen    => m_axi_card_hbm_p11_awlen,
+    m_axi_card_hbm_p11_awlock   => m_axi_card_hbm_p11_awlock,
+    m_axi_card_hbm_p11_awprot   => m_axi_card_hbm_p11_awprot,
+    m_axi_card_hbm_p11_awqos    => m_axi_card_hbm_p11_awqos,
+    m_axi_card_hbm_p11_awready  => m_axi_card_hbm_p11_awready,
+    m_axi_card_hbm_p11_awregion => m_axi_card_hbm_p11_awregion,
+    m_axi_card_hbm_p11_awsize   => m_axi_card_hbm_p11_awsize,
+    m_axi_card_hbm_p11_awuser   => m_axi_card_hbm_p11_awuser,
+    m_axi_card_hbm_p11_awvalid  => m_axi_card_hbm_p11_awvalid,
+    m_axi_card_hbm_p11_bid      => m_axi_card_hbm_p11_bid,
+    m_axi_card_hbm_p11_bready   => m_axi_card_hbm_p11_bready,
+    m_axi_card_hbm_p11_bresp    => m_axi_card_hbm_p11_bresp,
+    m_axi_card_hbm_p11_buser    => m_axi_card_hbm_p11_buser,
+    m_axi_card_hbm_p11_bvalid   => m_axi_card_hbm_p11_bvalid,
+    m_axi_card_hbm_p11_rdata    => m_axi_card_hbm_p11_rdata,
+    m_axi_card_hbm_p11_rid      => m_axi_card_hbm_p11_rid,
+    m_axi_card_hbm_p11_rlast    => m_axi_card_hbm_p11_rlast,
+    m_axi_card_hbm_p11_rready   => m_axi_card_hbm_p11_rready,
+    m_axi_card_hbm_p11_rresp    => m_axi_card_hbm_p11_rresp,
+    m_axi_card_hbm_p11_ruser    => m_axi_card_hbm_p11_ruser,
+    m_axi_card_hbm_p11_rvalid   => m_axi_card_hbm_p11_rvalid,
+    m_axi_card_hbm_p11_wdata    => m_axi_card_hbm_p11_wdata,
+    m_axi_card_hbm_p11_wid      => open,
+    m_axi_card_hbm_p11_wlast    => m_axi_card_hbm_p11_wlast,
+    m_axi_card_hbm_p11_wready   => m_axi_card_hbm_p11_wready,
+    m_axi_card_hbm_p11_wstrb    => m_axi_card_hbm_p11_wstrb,
+    m_axi_card_hbm_p11_wuser    => m_axi_card_hbm_p11_wuser,
+    m_axi_card_hbm_p11_wvalid   => m_axi_card_hbm_p11_wvalid,
 #endif
 --
     s_axi_ctrl_reg_araddr        => s_axi_ctrl_reg_araddr,
