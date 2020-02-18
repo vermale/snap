@@ -29,14 +29,14 @@ inline void mask_tkeep(ap_uint<512> &data, ap_uint<64> keep) {
 inline void copy_data(snap_membus_t *din_gmem, snap_HBMbus_t *d_hbm0, snap_HBMbus_t *d_hbm1, size_t in_addr) {
 	for (int i = 0; i < NMODULES * 512 * 1024 / 32; i ++) {
 #pragma HLS pipeline
-			ap_uint<512> tmp;
+		ap_uint<512> tmp;
 
-			memcpy(&tmp, din_gmem + in_addr + i, 64);
-                        ap_uint<256> tmp0 = tmp(255,0);
-                        ap_uint<256> tmp1 = tmp(511,256);
+		memcpy(&tmp, din_gmem + in_addr + i, 64);
+		ap_uint<256> tmp0 = tmp(255,0);
+		ap_uint<256> tmp1 = tmp(511,256);
 
-			memcpy(d_hbm0+i, &tmp0, 64);
-			memcpy(d_hbm1+i, &tmp1, 64);
+		memcpy(d_hbm0+i, &tmp0, 32);
+		memcpy(d_hbm1+i, &tmp1, 32);
 		}
 }
 
@@ -54,8 +54,8 @@ void process_frames(AXI_STREAM &din_eth,
 #pragma HLS DATAFLOW
 	DATA_STREAM raw;
 	DATA_STREAM converted;
-#pragma HLS STREAM variable=raw depth=2048
-#pragma HLS STREAM variable=converted depth=2048
+#pragma HLS STREAM variable=raw depth=128
+#pragma HLS STREAM variable=converted
 	read_eth_packet(din_eth, raw, eth_settings, eth_stat);
 	convert_data(raw, converted,
 			d_hbm_p0, d_hbm_p1,
