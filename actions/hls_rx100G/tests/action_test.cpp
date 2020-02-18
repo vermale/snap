@@ -8,9 +8,13 @@
 #define MODULE 0
 
 void hls_action(snap_membus_t *din_gmem, snap_membus_t *dout_gmem,
-		snap_membus_t *d_hbm_p0, snap_membus_t *d_hbm_p1,
-		snap_membus_t *d_hbm_p2, snap_membus_t *d_hbm_p3,
-		snap_membus_t *d_hbm_p4, snap_membus_t *d_hbm_p5,
+		snap_HBMbus_t *d_hbm_p0, snap_HBMbus_t *d_hbm_p1,
+		snap_HBMbus_t *d_hbm_p2, snap_HBMbus_t *d_hbm_p3,
+		snap_HBMbus_t *d_hbm_p4, snap_HBMbus_t *d_hbm_p5,
+		snap_HBMbus_t *d_hbm_p6, snap_HBMbus_t *d_hbm_p7,
+		snap_HBMbus_t *d_hbm_p8, snap_HBMbus_t *d_hbm_p9,
+		snap_HBMbus_t *d_hbm_p10, snap_HBMbus_t *d_hbm_p11,
+
 		AXI_STREAM &din_eth, AXI_STREAM &dout_eth,
 		action_reg *act_reg, action_RO_config_reg *Action_Config);
 
@@ -95,12 +99,19 @@ int main(int argc, char *argv[]) {
 	snap_membus_t *din_gmem = 0;
 	snap_membus_t *dout_gmem = 0;
 
-	snap_membus_t *d_hbm_p0 = (snap_membus_t *) calloc(1024*1024*256, 1);
-	snap_membus_t *d_hbm_p1 = (snap_membus_t *) calloc(1024*1024*256, 1);
-	snap_membus_t *d_hbm_p2 = (snap_membus_t *) calloc(1024*1024*256, 1);
-	snap_membus_t *d_hbm_p3 = (snap_membus_t *) calloc(1024*1024*256, 1);
-	snap_membus_t *d_hbm_p4 = (snap_membus_t *) calloc(1024*1024*256, 1);
-	snap_membus_t *d_hbm_p5 = (snap_membus_t *) calloc(1024*1024*256, 1);
+	snap_HBMbus_t *d_hbm_p0 = (snap_HBMbus_t *) calloc(1024*1024*256, 1);
+	snap_HBMbus_t *d_hbm_p1 = (snap_HBMbus_t *) calloc(1024*1024*256, 1);
+	snap_HBMbus_t *d_hbm_p2 = (snap_HBMbus_t *) calloc(1024*1024*256, 1);
+	snap_HBMbus_t *d_hbm_p3 = (snap_HBMbus_t *) calloc(1024*1024*256, 1);
+	snap_HBMbus_t *d_hbm_p4 = (snap_HBMbus_t *) calloc(1024*1024*256, 1);
+	snap_HBMbus_t *d_hbm_p5 = (snap_HBMbus_t *) calloc(1024*1024*256, 1);
+	snap_HBMbus_t *d_hbm_p6 = (snap_HBMbus_t *) calloc(1024*1024*256, 1);
+	snap_HBMbus_t *d_hbm_p7 = (snap_HBMbus_t *) calloc(1024*1024*256, 1);
+	snap_HBMbus_t *d_hbm_p8 = (snap_HBMbus_t *) calloc(1024*1024*256, 1);
+	snap_HBMbus_t *d_hbm_p9 = (snap_HBMbus_t *) calloc(1024*1024*256, 1);
+	snap_HBMbus_t *d_hbm_p10 = (snap_HBMbus_t *) calloc(1024*1024*256, 1);
+	snap_HBMbus_t *d_hbm_p11 = (snap_HBMbus_t *) calloc(1024*1024*256, 1);
+
 
     void* in_gain = snap_malloc(6*(NMODULES * 512 * 1024)*sizeof(uint16_t));
 	uint16_t *out_frame_buffer = (uint16_t *) snap_malloc(FRAME_BUF_SIZE*NMODULES*MODULE_COLS*MODULE_LINES*sizeof(uint16_t));
@@ -135,7 +146,9 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
-    hls_action(din_gmem, dout_gmem, d_hbm_p0, d_hbm_p1, d_hbm_p2, d_hbm_p3, d_hbm_p4, d_hbm_p5, din_eth, dout_eth, &action_register, &Action_Config);
+    hls_action(din_gmem, dout_gmem, d_hbm_p0, d_hbm_p1, d_hbm_p2, d_hbm_p3, d_hbm_p4, d_hbm_p5,
+    		d_hbm_p6, d_hbm_p7, d_hbm_p8, d_hbm_p9, d_hbm_p10, d_hbm_p11,
+    		din_eth, dout_eth, &action_register, &Action_Config);
 
 	ap_axiu_for_eth packet_out;
 
