@@ -127,7 +127,7 @@ int main(int argc, char *argv[]) {
 	action_RO_config_reg Action_Config;
 
 	action_register.Data.packets_to_read = NFRAMES * 128L;
-	action_register.Data.save_raw = 1;
+	action_register.Data.mode = MODE_RAW;
 	action_register.Control.flags = 1;
 	action_register.Data.fpga_mac_addr = 0xAABBCCDDEEF1;
 	action_register.Data.fpga_ipv4_addr = 0x0A013205; // 10.1.50.5
