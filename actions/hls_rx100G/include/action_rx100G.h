@@ -30,6 +30,12 @@
 
 #define NPIXEL (NMODULES*MODULE_COLS*MODULE_LINES)
 
+#define MODE_RAW     0
+#define MODE_CONV    1
+#define MODE_PEDEG0  2
+#define MODE_PEDEG1  3
+#define MODE_PEDEG2  4
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -48,7 +54,7 @@ typedef struct rx100G_job {
     uint64_t good_packets;
     uint64_t fpga_mac_addr;
     uint32_t fpga_ipv4_addr;
-    uint32_t save_raw;
+    uint32_t mode;
 } rx100G_job_t;
 
 #ifdef __cplusplus

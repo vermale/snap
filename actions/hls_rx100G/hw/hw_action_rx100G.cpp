@@ -50,7 +50,7 @@ void process_frames(AXI_STREAM &din_eth,
                 snap_HBMbus_t *d_hbm_p6, snap_HBMbus_t *d_hbm_p7,
                 snap_HBMbus_t *d_hbm_p8, snap_HBMbus_t *d_hbm_p9,
                 snap_HBMbus_t *d_hbm_p10, snap_HBMbus_t *d_hbm_p11,
- 		bool save_raw) {
+ 		ap_uint<8> mode) {
 #pragma HLS DATAFLOW
 	DATA_STREAM raw;
 	DATA_STREAM converted;
@@ -64,7 +64,7 @@ void process_frames(AXI_STREAM &din_eth,
 			d_hbm_p6, d_hbm_p7,
 			d_hbm_p8, d_hbm_p9,
 			d_hbm_p10, d_hbm_p11,
-			save_raw);
+			mode);
 	write_data(converted, dout_gmem, out_frame_buffer_addr, out_frame_status_addr);
 }
 
@@ -84,7 +84,7 @@ static int process_action(snap_membus_t *din_gmem,
 		action_reg *act_reg)
 {
 
-	send_gratious_arp(dout_eth, act_reg->Data.fpga_mac_addr, act_reg->Data.fpga_ipv4_addr);
+       send_gratious_arp(dout_eth, act_reg->Data.fpga_mac_addr, act_reg->Data.fpga_ipv4_addr);
 
 	size_t in_gain_pedestal_addr = act_reg->Data.in_gain_pedestal_data.addr >> ADDR_RIGHT_SHIFT;
 	size_t out_frame_buffer_addr = act_reg->Data.out_frame_buffer.addr >> ADDR_RIGHT_SHIFT;
@@ -102,7 +102,6 @@ static int process_action(snap_membus_t *din_gmem,
 	eth_stats.good_packets = 0;
 	eth_stats.ignored_packets = 0;
 
-
 	// Load constants
 	// Copy pede G1
 	copy_data(din_gmem, d_hbm_p0, d_hbm_p1, in_gain_pedestal_addr);
@@ -117,10 +116,6 @@ static int process_action(snap_membus_t *din_gmem,
 	// Copy pede G0 RMS
 	copy_data(din_gmem, d_hbm_p10, d_hbm_p11, in_gain_pedestal_addr + (NMODULES * 512 * 1024 / 32) * 5);
 
-
-	//if (act_reg->Data.save_raw)
-	// process_frames_raw(din_eth, eth_settings, eth_stats, dout_gmem, out_frame_buffer_addr, out_frame_status_addr);
-	//else
 	process_frames(din_eth, eth_settings, eth_stats, dout_gmem, out_frame_buffer_addr, out_frame_status_addr, 
                        d_hbm_p0, d_hbm_p1, 
                        d_hbm_p2, d_hbm_p3, 
@@ -128,7 +123,7 @@ static int process_action(snap_membus_t *din_gmem,
                        d_hbm_p6, d_hbm_p7, 
                        d_hbm_p8, d_hbm_p9, 
                        d_hbm_p10, d_hbm_p11, 
-                       act_reg->Data.save_raw);
+                       act_reg->Data.mode);
 
 	act_reg->Data.good_packets = eth_stats.good_packets;
 	act_reg->Data.bad_packets = eth_stats.bad_packets;

@@ -38,7 +38,7 @@ inline void load(ap_uint<512> &out, snap_HBMbus_t *d_hbm_p0, snap_HBMbus_t *d_hb
 	out(255,0) = d_hbm_p0[offset];
 }
 
-void pedestal_update(ap_uint<512> data_in, packed_pedeG0_t& packed_pede, ap_uint<32> &mask, ap_uint<2> exp_gain, uint64_t frame_number) {
+void pedestal_update(ap_uint<512> data_in, packed_pedeG0_t& packed_pede, ap_uint<2> exp_gain) {
 	pedeG0_t pedestal[32];
 	unpack_pedeG0(packed_pede, pedestal);
 	ap_uint<16> in_val[32];
@@ -47,21 +47,16 @@ void pedestal_update(ap_uint<512> data_in, packed_pedeG0_t& packed_pede, ap_uint
 
 	Loop1: for (int i = 0; i < 32; i++) {
 		ap_uint<2> gain = in_val[i](15,14);
-		if (gain != exp_gain) mask[i] = 1;
-		else {
-			pedeG0_t tmp = in_val[i](13,0);
-			if (frame_number < PEDESTAL_WINDOW_SIZE)
-				// Plain average
-				pedestal[i] += tmp / PEDESTAL_WINDOW_SIZE;
-			else
-				// Rolling average
-				pedestal[i] += (tmp - pedestal[i]) / PEDESTAL_WINDOW_SIZE;
+		pedeG0_t tmp = in_val[i](13,0);
+		if (gain == exp_gain) {
+			// Rolling average
+			pedestal[i] += (tmp - pedestal[i]) / PEDESTAL_WINDOW_SIZE;
 		}
 	}
 	pack_pedeG0(packed_pede, pedestal);
 }
 
-#define BURST_SIZE 4
+#define BURST_SIZE 8
 
 void convert_data(DATA_STREAM &in, DATA_STREAM &out,
 		snap_HBMbus_t *d_hbm_p0, snap_HBMbus_t *d_hbm_p1,
@@ -70,23 +65,25 @@ void convert_data(DATA_STREAM &in, DATA_STREAM &out,
 		snap_HBMbus_t *d_hbm_p6, snap_HBMbus_t *d_hbm_p7,
 		snap_HBMbus_t *d_hbm_p8, snap_HBMbus_t *d_hbm_p9,
 		snap_HBMbus_t *d_hbm_p10, snap_HBMbus_t *d_hbm_p11,
-		bool save_raw) {
+		ap_uint<8> mode) {
 
 	data_packet_t packet_in, packet_out;
 	in.read(packet_in);
 	packed_pedeG0_t packed_pedeG0[NMODULES * 512 * 1024 / 32];
-
-
 #pragma HLS RESOURCE variable=packed_pedeG0 core=RAM_1P_URAM
-	//#pragma HLS ARRAY_PARTITION variable=packed_pedeG0 cyclic factor=8 dim=1
+#pragma HLS ARRAY_PARTITION variable=packed_pedeG0 cyclic factor=8 dim=1
 
-	if (save_raw == 1) {
+	switch (mode) {
+	case MODE_RAW:
 		Just_forward: while (packet_in.exit != 1) {
 #pragma HLS pipeline
 			out.write(packet_in);
 			in.read(packet_in);
 		}
-	} else {
+	out.write(packet_in);
+	break;
+
+	case MODE_CONV:
 		while (packet_in.exit != 1) {
 			Convert_and_forward: while ((packet_in.exit != 1) && (packet_in.axis_packet % BURST_SIZE == 0)) {
 #pragma HLS pipeline II = 8
@@ -140,9 +137,46 @@ void convert_data(DATA_STREAM &in, DATA_STREAM &out,
 			}
 			while ((packet_in.exit != 1) && (packet_in.axis_packet % BURST_SIZE != 0)) in.read(packet_in);
 		}
-	}
+		out.write(packet_in);
+		break;
 
-	out.write(packet_in);
+	case MODE_PEDEG0:
+		while ((packet_in.exit != 1) && (packet_in.axis_packet % BURST_SIZE == 0)) {
+#pragma HLS pipeline II = 8
+			size_t offset = packet_in.module * 128 * 128 + 128 * packet_in.eth_packet + packet_in.axis_packet;
+			for (int i = 0; i < BURST_SIZE; i ++) {
+				pedestal_update(packet_in.data, packed_pedeG0[offset+i], 0);
+				in.read(packet_in);
+			}
+		}
+
+		out.write(packet_in);
+		break;
+
+	case MODE_PEDEG1:
+		while ((packet_in.exit != 1) && (packet_in.axis_packet % BURST_SIZE == 0)) {
+#pragma HLS pipeline II = 8
+			size_t offset = packet_in.module * 128 * 128 + 128 * packet_in.eth_packet + packet_in.axis_packet;
+			for (int i = 0; i < BURST_SIZE; i ++) {
+				pedestal_update(packet_in.data, packed_pedeG0[offset+i], 0);
+				in.read(packet_in);
+			}
+		}
+		out.write(packet_in);
+		break;
+
+	case MODE_PEDEG2:
+		while ((packet_in.exit != 1) && (packet_in.axis_packet % BURST_SIZE == 0)) {
+#pragma HLS pipeline II = 8
+			size_t offset = packet_in.module * 128 * 128 + 128 * packet_in.eth_packet + packet_in.axis_packet;
+			for (int i = 0; i < BURST_SIZE; i ++) {
+				pedestal_update(packet_in.data, packed_pedeG0[offset+i], 0);
+				in.read(packet_in);
+			}
+		}
+		out.write(packet_in);
+		break;
+	}
 }
 
 

@@ -28,6 +28,8 @@
 #define PEDE_G0_PRECISION 24
 #define PEDESTAL_WINDOW_SIZE 128
 
+
+
 //--------------------------------------------------------------------
 // 1: simplify the data casting style
 #define RELEASE_LEVEL		0x00000003
@@ -152,7 +154,7 @@ void convert_data(DATA_STREAM &in, DATA_STREAM &out,
 		snap_HBMbus_t *d_hbm_p6, snap_HBMbus_t *d_hbm_p7,
 		snap_HBMbus_t *d_hbm_p8, snap_HBMbus_t *d_hbm_p9,
 		snap_HBMbus_t *d_hbm_p10, snap_HBMbus_t *d_hbm_p11,
-		bool saw_raw);
+		ap_uint<8> mode);
 
 
 void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem,
