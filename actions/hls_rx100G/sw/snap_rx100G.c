@@ -64,7 +64,8 @@ static void snap_prepare_rx100G(struct snap_job *cjob,
 		      SNAP_ADDRFLAG_END);
 
 	mjob->packets_to_read = NPACKETS;
-	mjob->fpga_mac_addr = 0xAABBCCDDEEF1;
+	mjob->fpga_mac_addr = 0xAABBCCDDEEF1;   // AA:BB:CC:DD:EE:F1
+        mjob->fpga_ipv4_addr = 0x0A013205;      // 10.1.50.5
 	snap_job_set(cjob, mjob, sizeof(*mjob), NULL, 0);
 
 }
@@ -76,7 +77,7 @@ int main()
 {
 	// Init of all the default values used 
 	int rc = 0;
-	int card_no = 1;
+	int card_no = 0;
 	struct snap_card *card = NULL;
 	struct snap_action *action = NULL;
 	char device[128];
