@@ -54,8 +54,8 @@ void process_frames(AXI_STREAM &din_eth,
 #pragma HLS DATAFLOW
 	DATA_STREAM raw;
 	DATA_STREAM converted;
-#pragma HLS STREAM variable=raw depth=128
-#pragma HLS STREAM variable=converted
+#pragma HLS STREAM variable=raw depth=512
+#pragma HLS STREAM variable=converted depth=512
 	read_eth_packet(din_eth, raw, eth_settings, eth_stat);
 	convert_data(raw, converted,
 			d_hbm_p0, d_hbm_p1,
