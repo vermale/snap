@@ -31,92 +31,71 @@
 #include <action_rx100G.h>
 #include <snap_hls_if.h>
 
-#define NPACKETS 1
-
-//int verbose_flag = 0;
-
-//static const char *version = GIT_VERSION;
-
-static const char *mem_tab[] = { "HOST_DRAM", "CARD_DRAM", "TYPE_NVME" };
-
-// Function that fills the MMIO registers / data structure 
-// these are all data exchanged between the application and the action
-static void snap_prepare_rx100G(struct snap_job *cjob,
-				 struct rx100G_job *mjob,                               
-				 void *addr_out,
-                                 void *status_out,
-				 ssize_t size_out,
-                                 ssize_t size_status,
-				 uint8_t type_out)
-{
-	fprintf(stderr, "  prepare rx100G job of %ld bytes size\n", sizeof(*mjob));
-
-	assert(sizeof(*mjob) <= SNAP_JOBSIZE);
-	memset(mjob, 0, sizeof(*mjob));
-
-	// Setting output params : where result will be written in host memory
-	snap_addr_set(&mjob->out_frame_buffer, addr_out, size_out, type_out,
-		      SNAP_ADDRFLAG_ADDR | SNAP_ADDRFLAG_DST |
-		      SNAP_ADDRFLAG_END);
-
-	snap_addr_set(&mjob->out_frame_status, status_out, size_status, type_out,
-		      SNAP_ADDRFLAG_ADDR | SNAP_ADDRFLAG_DST |
-		      SNAP_ADDRFLAG_END);
-
-	mjob->packets_to_read = NPACKETS;
-	mjob->fpga_mac_addr = 0xAABBCCDDEEF1;   // AA:BB:CC:DD:EE:F1
-        mjob->fpga_ipv4_addr = 0x0A013205;      // 10.1.50.5
-	snap_job_set(cjob, mjob, sizeof(*mjob), NULL, 0);
-
-}
+#define NFRAMES 1
+#define NPACKETS
 
 /* main program of the application for the hls_helloworld example        */
 /* This application will always be run on CPU and will call either       */
 /* a software action (CPU executed) or a hardware action (FPGA executed) */
 int main()
 {
-	// Init of all the default values used 
-	int rc = 0;
+	int rc = 0; // return code
+
+	// Card parameters
 	int card_no = 0;
 	struct snap_card *card = NULL;
 	struct snap_action *action = NULL;
 	char device[128];
+
+	// Control register
 	struct snap_job cjob;
 	struct rx100G_job mjob;
+
 	unsigned long timeout = 600;
 	struct timeval etime, stime;
-	ssize_t size = NPACKETS * 400 * 64;
-        ssize_t status_size = NMODULES*NPACKETS+64;
-	uint8_t *obuff = NULL;
-        uint8_t *obuff_status = NULL;
-	uint8_t type_out = SNAP_ADDRTYPE_HOST_DRAM;
-	uint64_t addr_out = 0x0ull;
-        uint64_t status_out = 0x0ull;
+
+	fprintf(stderr, "  prepare rx100G job of %ld bytes size\n", sizeof(mjob));
+
+	assert(sizeof(mjob) <= SNAP_JOBSIZE);
+	memset(&mjob, 0, sizeof(mjob));
+
+    uint64_t out_data_buffer_size = FRAME_BUF_SIZE * (NMODULES * NPIXEL * 2); // can store FRAME_BUF_SIZE frames
+    uint64_t out_status_buffer_size = (FRAME_STATUS_BUF_SIZE+1)*64;           // can store FRAME_STATUS_BUF_SIZE frames
+    uint64_t in_parameters_array_size = (6 * NPIXEL * 2); // each entry to in_parameters_array is 2 bytes and there are 6 constants per pixel
+
+    // Arrays are allocated with mmap for the higest possible performance. Output is page aligned, so it will be also 64b aligned.
+    void *out_data_buffer     = mmap (NULL, out_data_buffer_size, PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS| MAP_POPULATE, -1, 0) ;
+    if (out_data_buffer == NULL) goto out_error;
+
+    void *out_status_buffer   = mmap (NULL, out_status_buffer_size, PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS| MAP_POPULATE, -1, 0);
+    if (out_status_buffer == NULL) goto out_error;
+
+    void *in_parameters_array = mmap (NULL, in_parameters_array_size, PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS| MAP_POPULATE, -1, 0);
+    if (in_parameters_array == NULL) goto out_error;
+
+	memset(out_data_buffer, 0x0, out_data_buffer_size);
+	memset(out_status_buffer, 0x0, out_status_buffer_size);
+	memset(in_parameters_array, 0x0, in_parameters_array_size);
+
+    mjob.packets_to_read = NFRAMES*NMODULES*128;
+    mjob.fpga_mac_addr = 0xAABBCCDDEEF1;   // AA:BB:CC:DD:EE:F1
+    mjob.fpga_ipv4_addr = 0x0A013205;      // 10.1.50.5
+
+    // Setting input parameters:
+    snap_addr_set(&mjob.in_gain_pedestal_data, in_parameters_array, in_parameters_array_size, SNAP_ADDRTYPE_HOST_DRAM,
+    		SNAP_ADDRFLAG_ADDR | SNAP_ADDRFLAG_SRC);
+
+    // Setting output parameters:
+    snap_addr_set(&mjob.out_frame_buffer, out_data_buffer, out_data_buffer_size, SNAP_ADDRTYPE_HOST_DRAM,
+    		SNAP_ADDRFLAG_ADDR | SNAP_ADDRFLAG_DST);
+
+    snap_addr_set(&mjob.out_frame_status, out_status_buffer, out_status_buffer_size, SNAP_ADDRTYPE_HOST_DRAM,
+    		SNAP_ADDRFLAG_ADDR | SNAP_ADDRFLAG_DST | SNAP_ADDRFLAG_END);
 
 	int exit_code = EXIT_SUCCESS;
 
 	// default is interrupt mode enabled (vs polling)
 	snap_action_flag_t action_irq = (SNAP_ACTION_DONE_IRQ | SNAP_ATTACH_IRQ);
-
-	/* Allocate in host memory the place to put the text processed */
-	obuff = snap_malloc(size); //64Bytes aligned malloc
-	obuff_status = snap_malloc(status_size); //64Bytes aligned malloc
-	if (obuff == NULL) goto out_error;
-	memset(obuff, 0x0, size);
-
-	// prepare params to be written in MMIO registers for action
-	type_out = SNAP_ADDRTYPE_HOST_DRAM;
-	addr_out = (unsigned long)obuff;
-        status_out = (unsigned long) obuff_status;
-
-	/* Display the parameters that will be used for the example */
-	printf("PARAMETERS:\n"
-	       "  type_out:    %x %s\n"
-	       "  addr_out:    %016llx\n"
-	       "  size_in/out: %08lx\n",
-	       type_out, mem_tab[type_out], (long long)addr_out,
-	       size);
-
 
 	// Allocate the card that will be used
 	snprintf(device, sizeof(device)-1, "/dev/cxl/afu%d.0s", card_no);
@@ -136,10 +115,8 @@ int main()
 		goto out_error1;
 	}
 
-
 	// Fill the stucture of data exchanged with the action
-	snap_prepare_rx100G(&cjob, &mjob,
-			     (void *)addr_out, (void *) status_out, size,status_size, type_out);
+	snap_job_set(&cjob, &mjob, sizeof(mjob), NULL, 0);
 
 	// uncomment to dump the job structure
 	__hexdump(stderr, &mjob, sizeof(mjob));
@@ -162,13 +139,11 @@ int main()
 			strerror(errno));
 		goto out_error2;
 	}
-        __hexdump(stdout, obuff, 130*64);
-        __hexdump(stdout, obuff_status, 8192);
-	__hexdump(stderr, &mjob, sizeof(mjob));
+    __hexdump(stdout, out_data_buffer, 130*64);
+    __hexdump(stdout, out_status_buffer, 8192);
 
 	printf(" Good packets %ld\n", mjob.good_packets);
 	printf(" Bad packets %ld\n", mjob.bad_packets);
-	printf(" MAC %lx\n", mjob.fpga_mac_addr);
 
 	// test return code
 	(cjob.retc == SNAP_RETC_SUCCESS) ? fprintf(stdout, "SUCCESS\n") : fprintf(stdout, "FAILED\n");
@@ -178,14 +153,17 @@ int main()
 	}
 
 	// Display the time of the action call (MMIO registers filled + execution)
-	fprintf(stdout, "SNAP helloworld took %lld usec\n",
+	fprintf(stdout, "RX100G took %lld usec\n",
 		(long long)timediff_usec(&etime, &stime));
 
 	// Detach action + disallocate the card
 	snap_detach_action(action);
 	snap_card_free(card);
 
-	__free(obuff);
+	// Memory deallocation
+	munmap(out_data_buffer, out_data_buffer_size);
+	munmap(out_status_buffer, out_status_buffer_size);
+	munmap(in_parameters_array, in_parameters_array_size);
 	exit(exit_code);
 
  out_error2:
@@ -193,6 +171,5 @@ int main()
  out_error1:
 	snap_card_free(card);
  out_error:
-	__free(obuff);
 	exit(EXIT_FAILURE);
 }
