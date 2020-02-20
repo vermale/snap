@@ -122,7 +122,7 @@ void convert_data(DATA_STREAM &in, DATA_STREAM &out,
 							tmp0[i], tmp1[i], tmp2[i], tmp3[i],
 							tmp4[i], tmp5[i], tmp6[i], tmp7[i],
 							tmp8[i], tmp9[i], tmp10[i], tmp11[i]);
-					packet_out.data = packet_in.data;
+
 					packet_out.exit = packet_in.exit;
 					packet_out.axis_packet = packet_in.axis_packet;
 					packet_out.eth_packet = packet_in.eth_packet;
