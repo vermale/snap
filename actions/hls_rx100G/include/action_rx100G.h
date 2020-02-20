@@ -23,7 +23,7 @@
 #define FRAME_BUF_SIZE        16384L
 #define FRAME_STATUS_BUF_SIZE 16384
 
-#define NMODULES 2
+#define NMODULES 4
 
 #define MODULE_COLS 1024L
 #define MODULE_LINES 512L
