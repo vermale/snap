@@ -345,7 +345,7 @@ void convert_and_shuffle(ap_uint<512> data_in, ap_uint<512>& data_out,
 			}
 		}
 	}
-	// pack_pedeG0(packed_pedeG0, pedeG0);
+	pack_pedeG0(packed_pedeG0, pedeG0);
 	data_shuffle(data_out, out_val);
 }
 
