@@ -59,15 +59,16 @@ int main()
 	assert(sizeof(mjob) <= SNAP_JOBSIZE);
 	memset(&mjob, 0, sizeof(mjob));
 
-    uint64_t out_data_buffer_size = FRAME_BUF_SIZE * (NMODULES * NPIXEL * 2); // can store FRAME_BUF_SIZE frames
+    uint64_t out_data_buffer_size = FRAME_BUF_SIZE * NPIXEL * 2; // can store FRAME_BUF_SIZE frames
     uint64_t out_status_buffer_size = (FRAME_STATUS_BUF_SIZE+1)*64;           // can store FRAME_STATUS_BUF_SIZE frames
     uint64_t in_parameters_array_size = (6 * NPIXEL * 2); // each entry to in_parameters_array is 2 bytes and there are 6 constants per pixel
 
     // Arrays are allocated with mmap for the higest possible performance. Output is page aligned, so it will be also 64b aligned.
-    void *out_data_buffer     = mmap (NULL, out_data_buffer_size, PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS| MAP_POPULATE, -1, 0) ;
+
+    void *out_data_buffer  = mmap (NULL, out_data_buffer_size, PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS| MAP_POPULATE, -1, 0) ;
     if (out_data_buffer == NULL) goto out_error;
 
-    void *out_status_buffer   = mmap (NULL, out_status_buffer_size, PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS| MAP_POPULATE, -1, 0);
+    void *out_status_buffer = mmap (NULL, out_status_buffer_size, PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS| MAP_POPULATE, -1, 0);
     if (out_status_buffer == NULL) goto out_error;
 
     void *in_parameters_array = mmap (NULL, in_parameters_array_size, PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS| MAP_POPULATE, -1, 0);
@@ -171,5 +172,6 @@ int main()
  out_error1:
 	snap_card_free(card);
  out_error:
+    printf("Error\n");
 	exit(EXIT_FAILURE);
 }
