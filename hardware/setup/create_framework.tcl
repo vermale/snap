@@ -259,7 +259,6 @@ if { $eth_used == TRUE } {
     # Commented below line for make model, uncomment for make image
     add_files -norecurse  $ip_dir/eth_100G/eth_100G.srcs/sources_1/bd/eth_100G/eth_100G.bd  >> $log_file
     export_ip_user_files -of_objects  [get_files  $ip_dir/eth_100G/eth_100G.srcs/sources_1/bd/eth_100G/eth_100G.bd] -no_script -sync -force -quiet >> $log_file
-  
   }
 
 }

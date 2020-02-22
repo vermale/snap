@@ -2,6 +2,7 @@
 ----------------------------------------------------------------------------
 --
 -- Copyright 2019 International Business Machines
+-- Copyright 2019 Paul Scherrer Insitute
 --
 -- Licensed under the Apache License, Version 2.0 (the "License");
 -- you may not use this file except in compliance with the License.
@@ -45,7 +46,8 @@ ENTITY psl_fpga IS
     c0_ddr4_ck_c              : OUT   STD_LOGIC_VECTOR(0 DOWNTO 0);
     c0_ddr4_ck_t              : OUT   STD_LOGIC_VECTOR(0 DOWNTO 0);
 #endif
-#ifdef CONFIG_ENABLE_ETHERNET
+
+#if defined(CONFIG_ENABLE_ETHERNET) && !defined(CONFIG_ENABLE_ETH_LOOP_BACK)
     gt_ref_clk_n                        : IN STD_LOGIC; 
     gt_ref_clk_p                        : IN STD_LOGIC;
 --    gt_ref2_clk_n                       : IN STD_LOGIC; 
@@ -254,7 +256,8 @@ Component psl_accel
     c0_ddr4_ck_t                        : OUT   STD_LOGIC_VECTOR(0 DOWNTO 0);
 -- TODO:    c0_ddr4_ten                         : OUT   STD_LOGIC;
 #endif
-#ifdef CONFIG_ENABLE_ETHERNET
+
+#if defined(CONFIG_ENABLE_ETHERNET) && !defined(CONFIG_ENABLE_ETH_LOOP_BACK)
     gt_ref_clk_n                        : IN STD_LOGIC; 
     gt_ref_clk_p                        : IN STD_LOGIC;
     gt_rx_gt_port_0_n                   : IN STD_LOGIC;
@@ -555,7 +558,8 @@ BEGIN
       c0_ddr4_ck_c                      => c0_ddr4_ck_c,
       c0_ddr4_ck_t                      => c0_ddr4_ck_t,
 #endif
-#ifdef CONFIG_ENABLE_ETHERNET
+
+#if defined(CONFIG_ENABLE_ETHERNET) && !defined(CONFIG_ENABLE_ETH_LOOP_BACK)
     gt_ref_clk_n                        => gt_ref_clk_n,
     gt_ref_clk_p                        => gt_ref_clk_p,
     gt_rx_gt_port_0_n                   => gt_rx_gt_port_0_n,
