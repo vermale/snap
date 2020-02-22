@@ -19,6 +19,8 @@
 #include "ap_int.h"
 #include "hw_action_rx100G.h"
 
+packed_pedeG0_t packed_pedeG0[NMODULES * 512 * 1024 / 32];
+
 inline void mask_tkeep(ap_uint<512> &data, ap_uint<64> keep) {
 	for (int i = 0; i < 64; i++) {
 #pragma HLS unroll
@@ -26,18 +28,78 @@ inline void mask_tkeep(ap_uint<512> &data, ap_uint<64> keep) {
 	}
 }
 
-inline void copy_data(snap_membus_t *din_gmem, snap_HBMbus_t *d_hbm0, snap_HBMbus_t *d_hbm1, size_t in_addr) {
-	for (int i = 0; i < NMODULES * 512 * 1024 / 32; i ++) {
-#pragma HLS pipeline
-		ap_uint<512> tmp;
 
-		memcpy(&tmp, din_gmem + in_addr + i, 64);
-		ap_uint<256> tmp0 = tmp(255,0);
-		ap_uint<256> tmp1 = tmp(511,256);
+void copy_data(snap_membus_t *din_gmem, snap_HBMbus_t *d_hbm0, snap_HBMbus_t *d_hbm1, size_t in_addr) {
+	for (size_t i = 0; i < NMODULES * 512 * 1024 / 32; i ++) {
+		ap_uint<512> tmp = din_gmem[in_addr+i];
+		d_hbm0[i] = tmp(255,0);
+	}
+	for (size_t i = 0; i < NMODULES * 512 * 1024 / 32; i ++) {
+		ap_uint<512> tmp = din_gmem[in_addr+i];
+		d_hbm1[i] = tmp(511,256);
+	}
+}
 
-		memcpy(d_hbm0+i, &tmp0, 32);
-		memcpy(d_hbm1+i, &tmp1, 32);
-		}
+void load_data_to_hbm(snap_membus_t *din_gmem, uint64_t in_gain_pedestal_addr,
+		        snap_HBMbus_t *d_hbm_p0, snap_HBMbus_t *d_hbm_p1,
+                snap_HBMbus_t *d_hbm_p2, snap_HBMbus_t *d_hbm_p3,
+                snap_HBMbus_t *d_hbm_p4, snap_HBMbus_t *d_hbm_p5,
+                snap_HBMbus_t *d_hbm_p6, snap_HBMbus_t *d_hbm_p7,
+                snap_HBMbus_t *d_hbm_p8, snap_HBMbus_t *d_hbm_p9,
+                snap_HBMbus_t *d_hbm_p10, snap_HBMbus_t *d_hbm_p11) {
+
+	size_t offset = in_gain_pedestal_addr;
+	for (size_t i = 0; i < NPIXEL * 2 / 64; i ++) {
+#pragma HLS PIPELINE
+		ap_uint<512> tmp = din_gmem[offset+i];
+		d_hbm_p0[i] = tmp(255,0);
+		d_hbm_p1[i] = tmp(511,256);
+	}
+	offset += NPIXEL * 2 / 64;
+	for (size_t i = 0; i < NPIXEL * 2 / 64; i ++) {
+#pragma HLS PIPELINE
+		ap_uint<512> tmp = din_gmem[offset+i];
+		d_hbm_p2[i] = tmp(255,0);
+		d_hbm_p3[i] = tmp(511,256);
+	}
+	offset += NPIXEL * 2 / 64;
+	for (size_t i = 0; i < NPIXEL * 2 / 64; i ++) {
+#pragma HLS PIPELINE
+		ap_uint<512> tmp = din_gmem[offset+i];
+		d_hbm_p4[i] = tmp(255,0);
+		d_hbm_p5[i] = tmp(511,256);
+	}
+	offset += NPIXEL * 2 / 64;
+	for (size_t i = 0; i < NPIXEL * 2 / 64; i ++) {
+#pragma HLS PIPELINE
+		ap_uint<512> tmp = din_gmem[offset+i];
+		d_hbm_p6[i] = tmp(255,0);
+		d_hbm_p7[i] = tmp(511,256);
+	}
+	offset += NPIXEL * 2 / 64;
+	for (size_t i = 0; i < NPIXEL * 2 / 64; i ++) {
+#pragma HLS PIPELINE
+		ap_uint<512> tmp = din_gmem[offset+i];
+		d_hbm_p8[i] = tmp(255,0);
+		d_hbm_p9[i] = tmp(511,256);
+	}
+	offset += NPIXEL * 2 / 64;
+	for (size_t i = 0; i < NPIXEL * 2 / 64; i ++) {
+#pragma HLS PIPELINE
+		ap_uint<512> tmp = din_gmem[offset+i];
+		d_hbm_p10[i] = tmp(255,0);
+		d_hbm_p11[i] = tmp(511,256);
+	}
+}
+
+void save_pedestal(snap_membus_t *dout_gmem, uint64_t in_gain_pedestal_addr) {
+	size_t offset = in_gain_pedestal_addr + 6 * NPIXEL * 2 / 64;
+
+	for (size_t i = 0; i < NPIXEL * 2 / 64; i ++) {
+	#pragma HLS PIPELINE
+		pack_pede(packed_pedeG0[i], dout_gmem[offset+i]);
+	}
+
 }
 
 void process_frames(AXI_STREAM &din_eth,
@@ -54,8 +116,8 @@ void process_frames(AXI_STREAM &din_eth,
 #pragma HLS DATAFLOW
 	DATA_STREAM raw;
 	DATA_STREAM converted;
-#pragma HLS STREAM variable=raw depth=512
-#pragma HLS STREAM variable=converted depth=512
+#pragma HLS STREAM variable=raw depth=256
+#pragma HLS STREAM variable=converted depth=256
 	read_eth_packet(din_eth, raw, eth_settings, eth_stat);
 	convert_data(raw, converted,
 			d_hbm_p0, d_hbm_p1,
@@ -73,18 +135,26 @@ void process_frames(AXI_STREAM &din_eth,
 //----------------------------------------------------------------------
 static int process_action(snap_membus_t *din_gmem,
 		snap_membus_t *dout_gmem,
-                snap_HBMbus_t *d_hbm_p0, snap_HBMbus_t *d_hbm_p1,
-                snap_HBMbus_t *d_hbm_p2, snap_HBMbus_t *d_hbm_p3,
-                snap_HBMbus_t *d_hbm_p4, snap_HBMbus_t *d_hbm_p5,
-                snap_HBMbus_t *d_hbm_p6, snap_HBMbus_t *d_hbm_p7,
-                snap_HBMbus_t *d_hbm_p8, snap_HBMbus_t *d_hbm_p9,
-                snap_HBMbus_t *d_hbm_p10, snap_HBMbus_t *d_hbm_p11,
+        snap_HBMbus_t *d_hbm_p0, snap_HBMbus_t *d_hbm_p1,
+        snap_HBMbus_t *d_hbm_p2, snap_HBMbus_t *d_hbm_p3,
+        snap_HBMbus_t *d_hbm_p4, snap_HBMbus_t *d_hbm_p5,
+        snap_HBMbus_t *d_hbm_p6, snap_HBMbus_t *d_hbm_p7,
+        snap_HBMbus_t *d_hbm_p8, snap_HBMbus_t *d_hbm_p9,
+        snap_HBMbus_t *d_hbm_p10, snap_HBMbus_t *d_hbm_p11,
 		AXI_STREAM &din_eth,
 		AXI_STREAM &dout_eth,
 		action_reg *act_reg)
 {
 
-       send_gratious_arp(dout_eth, act_reg->Data.fpga_mac_addr, act_reg->Data.fpga_ipv4_addr);
+	// HBM Order:
+	// p0,p1 - gain G0
+	// p2,p3 - gain G1
+	// p4,p5 - gain G2
+	// p6,p7 - pedestal G1
+	// p8,p9 - pedestal G2
+	// p10,p11 - pedestal G0 RMS
+
+    send_gratious_arp(dout_eth, act_reg->Data.fpga_mac_addr, act_reg->Data.fpga_ipv4_addr);
 
 	size_t in_gain_pedestal_addr = act_reg->Data.in_gain_pedestal_data.addr >> ADDR_RIGHT_SHIFT;
 	size_t out_frame_buffer_addr = act_reg->Data.out_frame_buffer.addr >> ADDR_RIGHT_SHIFT;
@@ -103,31 +173,45 @@ static int process_action(snap_membus_t *din_gmem,
 	eth_stats.ignored_packets = 0;
 
 	// Load constants
-	// Copy pede G1
-	copy_data(din_gmem, d_hbm_p0, d_hbm_p1, in_gain_pedestal_addr);
-	// Copy pede G2
-	copy_data(din_gmem, d_hbm_p2, d_hbm_p3, in_gain_pedestal_addr + (NMODULES * 512 * 1024 / 32));
-	// Copy gain G0
-	copy_data(din_gmem, d_hbm_p4, d_hbm_p5, in_gain_pedestal_addr + (NMODULES * 512 * 1024 / 32) * 2);
-	// Copy gain G1
-	copy_data(din_gmem, d_hbm_p6, d_hbm_p7, in_gain_pedestal_addr + (NMODULES * 512 * 1024 / 32) * 3);
-	// Copy gain G2
-	copy_data(din_gmem, d_hbm_p8, d_hbm_p9, in_gain_pedestal_addr + (NMODULES * 512 * 1024 / 32) * 4);
-	// Copy pede G0 RMS
-	copy_data(din_gmem, d_hbm_p10, d_hbm_p11, in_gain_pedestal_addr + (NMODULES * 512 * 1024 / 32) * 5);
-
-	process_frames(din_eth, eth_settings, eth_stats, dout_gmem, out_frame_buffer_addr, out_frame_status_addr, 
-                       d_hbm_p0, d_hbm_p1, 
-                       d_hbm_p2, d_hbm_p3, 
-                       d_hbm_p4, d_hbm_p5, 
-                       d_hbm_p6, d_hbm_p7, 
-                       d_hbm_p8, d_hbm_p9, 
-                       d_hbm_p10, d_hbm_p11, 
-                       act_reg->Data.mode);
-
+	switch(act_reg->Data.mode) {
+	case MODE_LOAD_CONSTANTS:
+		load_data_to_hbm(din_gmem, in_gain_pedestal_addr,
+				d_hbm_p0, d_hbm_p1,
+				d_hbm_p2, d_hbm_p3,
+				d_hbm_p4, d_hbm_p5,
+				d_hbm_p6, d_hbm_p7,
+				d_hbm_p8, d_hbm_p9,
+				d_hbm_p10, d_hbm_p11);
+		break;
+	default:
+		process_frames(din_eth, eth_settings, eth_stats, dout_gmem, out_frame_buffer_addr, out_frame_status_addr,
+						d_hbm_p0, d_hbm_p1,
+						d_hbm_p2, d_hbm_p3,
+						d_hbm_p4, d_hbm_p5,
+						d_hbm_p6, d_hbm_p7,
+						d_hbm_p8, d_hbm_p9,
+						d_hbm_p10, d_hbm_p11,
+						act_reg->Data.mode);
+		break;
+	}
+	if ((act_reg->Data.mode == MODE_PEDEG0) || (act_reg->Data.mode == MODE_PEDEG1)
+			 || (act_reg->Data.mode == MODE_PEDEG2)  || (act_reg->Data.mode == MODE_CONV)) {
+		if (act_reg->Data.mode == MODE_PEDEG1) {
+				Save_pedeG1: for (size_t i = 0; i < NPIXEL * 2 / 64; i ++) {
+	#pragma HLS PIPELINE
+					pack_pedeG1G2(packed_pedeG0[i], d_hbm_p6[i], d_hbm_p7[i]);
+				}
+			}
+		if (act_reg->Data.mode == MODE_PEDEG2) {
+			Save_pedeG2: for (size_t i = 0; i < NPIXEL * 2 / 64; i ++) {
+#pragma HLS PIPELINE
+				pack_pedeG1G2(packed_pedeG0[i], d_hbm_p8[i], d_hbm_p9[i]);
+			}
+		}
+		save_pedestal(dout_gmem, in_gain_pedestal_addr);
+	}
 	act_reg->Data.good_packets = eth_stats.good_packets;
 	act_reg->Data.bad_packets = eth_stats.bad_packets;
-	//	act_reg->Data.ignored_packets = eth_stats.ignored_packets;
 
 	act_reg->Control.Retc = SNAP_RETC_SUCCESS;
 
@@ -195,6 +279,8 @@ void hls_action(snap_membus_t *din_gmem, snap_membus_t *dout_gmem,
 #pragma HLS INTERFACE axis register off port=din_eth
 #pragma HLS INTERFACE axis register off port=dout_eth
 
+#pragma HLS RESOURCE variable=packed_pedeG0 core=RAM_2P_URAM
+#pragma HLS ARRAY_PARTITION variable=packed_pedeG0 cyclic factor=8 dim=1
 
 	/* Required Action Type Detection - NO CHANGE BELOW */
 	//	NOTE: switch generates better vhdl than "if" */

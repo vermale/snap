@@ -30,11 +30,12 @@
 
 #define NPIXEL (NMODULES*MODULE_COLS*MODULE_LINES)
 
-#define MODE_RAW     0
-#define MODE_CONV    1
-#define MODE_PEDEG0  2
-#define MODE_PEDEG1  3
-#define MODE_PEDEG2  4
+#define MODE_RAW            0
+#define MODE_CONV           1
+#define MODE_PEDEG0         2
+#define MODE_PEDEG1         3
+#define MODE_PEDEG2         4
+#define MODE_LOAD_CONSTANTS 5
 
 #ifdef __cplusplus
 extern "C" {

@@ -28,8 +28,6 @@
 #define PEDE_G0_PRECISION 24
 #define PEDESTAL_WINDOW_SIZE 128
 
-
-
 //--------------------------------------------------------------------
 // 1: simplify the data casting style
 #define RELEASE_LEVEL		0x00000003
@@ -126,6 +124,9 @@ void decode_eth_1(ap_uint<512> val_in, packet_header_t &header_out);
 void decode_eth_2(ap_uint<512> val_in, packet_header_t &header_out);
 
 void pack_pedeG0(packed_pedeG0_t& out, pedeG0_t in[32]);
+void pack_pedeG1G2(packed_pedeG0_t in, ap_uint<256> &out1, ap_uint<256> &out2);
+void pack_pede(packed_pedeG0_t in, ap_uint<512> &out);
+
 void unpack_pedeG0(packed_pedeG0_t in, pedeG0_t out[32]);
 void unpack_gainG0(ap_uint<512> in, gainG0_t outg[32]);
 void unpack_pedeG0RMS(ap_uint<512> in, pedeG0RMS_t[32]);
@@ -175,5 +176,7 @@ void convert_and_shuffle(ap_uint<512> data_in, ap_uint<512>& data_out,
 		packed_pedeG0_t& packed_pedeG0, ap_uint<512> packed_pedeG0RMS, ap_uint<512> packed_gainG0,
 		ap_uint<512> packed_pedeG1, ap_uint<512> packed_gainG1,
 		ap_uint<512> packed_pedeG2, ap_uint<512> packed_gainG2);
+
+extern packed_pedeG0_t packed_pedeG0[NMODULES * 512 * 1024 / 32];
 
 #endif  /* __ACTION_RX100G_H__*/

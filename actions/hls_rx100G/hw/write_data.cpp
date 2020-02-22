@@ -56,8 +56,7 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 
 			bool frame_ok = true;
 
-			ap_uint<512> buffer1[64];
-			ap_uint<512> buffer2[64];
+			ap_uint<512> buffer[128];
 
 			uint64_t frame_number0 = packet_in.frame_number;
 			ap_uint<4> module0 = packet_in.module;
@@ -85,21 +84,13 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 
 			ap_uint<1> last_axis_user;
 
-			for (int i = 0; i < 64; i++) {
-				buffer1[i] = packet_in.data;
+			for (int i = 0; i < 128; i++) {
+				if (i == 127) last_axis_user = packet_in.axis_user; // relevant for the last packet
+				buffer[i] = packet_in.data;
 				in.read(packet_in);
 			}
 
-			memcpy(dout_gmem + out_frame_addr, buffer1, 64*64);
-
-			for (int i = 0; i < 64; i++) {
-				if (i == 63) last_axis_user = packet_in.axis_user; // relevant for the last packet
-				buffer2[i] = packet_in.data;
-				in.read(packet_in);
-
-			}
-
-			memcpy(dout_gmem + out_frame_addr+64, buffer2, 64*64);
+			memcpy(dout_gmem + out_frame_addr+64, buffer, 128*64);
 
 			// If this is first frame with this number AND It starts new 64
 			if ((is_head) && ((frame_number0 * NMODULES) % 64 == 0)) {

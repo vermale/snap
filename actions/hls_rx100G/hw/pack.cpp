@@ -22,6 +22,33 @@ void pack_pedeG0(packed_pedeG0_t& out, pedeG0_t in[32]) {
 	}
 }
 
+void pack_pede(packed_pedeG0_t in, ap_uint<512> &out) {
+	pedeG0_t tmp_full[32];
+
+	unpack_pedeG0(in, tmp_full);
+	for (int i = 0; i < 32; i++) {
+		pedeG1G2_t tmp1 = tmp_full[i]; // returns limited precision!
+		for (int j = 0; j < 16; j++) {
+			out[i*16+j] = tmp1[j];
+		}
+	}
+}
+
+
+void pack_pedeG1G2(packed_pedeG0_t in, ap_uint<256> &out1, ap_uint<256> &out2) {
+	pedeG0_t tmp_full[32];
+
+	unpack_pedeG0(in, tmp_full);
+	for (int i = 0; i < 16; i++) {
+		pedeG1G2_t tmp1 = tmp_full[i];
+		pedeG1G2_t tmp2 = tmp_full[i+16];
+		for (int j = 0; j < 16; j++) {
+			out1[i*16+j] = tmp1[j];
+			out2[i*16+j] = tmp2[j];
+		}
+	}
+}
+
 void unpack_pedeG0(packed_pedeG0_t in, pedeG0_t out[32]) {
 	for (int i = 0; i < 32; i ++) {
 		for (int j = 0; j < PEDE_G0_PRECISION; j ++) out[i][j] = in[i*20+j];
@@ -43,8 +70,6 @@ void unpack_pedeG0RMS(ap_uint<512> in, pedeG0RMS_t outr[32]) {
 		}
 	}
 }
-
-
 
 void unpack_gainG0(ap_uint<256> in_1, ap_uint<256> in_2, gainG0_t outg[32]) {
 	for (int i = 0; i < 16; i ++) {
