@@ -52,7 +52,8 @@ struct ap_axiu_for_eth {
 };
 
 struct eth_settings_t {
-	uint64_t expected_packets;
+	uint64_t frame_number_to_stop;
+	uint64_t frame_number_to_quit;
 	uint64_t fpga_mac_addr;
 	uint32_t fpga_ipv4_addr;
 	uint32_t fpga_udp_port;
@@ -144,7 +145,7 @@ void data_pack(ap_uint<512> &out, ap_int<16> in[32]);
 
 void send_gratious_arp(AXI_STREAM &out, ap_uint<48> mac, ap_uint<32> ipv4_address);
 
-void read_eth_packet(AXI_STREAM &deth_in, DATA_STREAM &raw_out, eth_settings_t eth_settings, eth_stat_t &eth_stat);
+void read_eth_packet(AXI_STREAM &deth_in, DATA_STREAM &raw_out, eth_settings_t eth_settings);
 
 void filter_packets(DATA_STREAM &in, DATA_STREAM &out);
 

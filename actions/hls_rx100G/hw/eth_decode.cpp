@@ -16,7 +16,7 @@
 
 #include "hw_action_rx100G.h"
 
-enum rcv_state_t {RCV_INIT, RCV_JF_HEADER, RCV_GOOD, RCV_BAD, RCV_IGNORE};
+enum rcv_state_t {RCV_INIT, RCV_JF_HEADER, RCV_GOOD, RCV_IGNORE};
 
 inline ap_uint<48> get_mac_addr(ap_uint<512> data, size_t position) {
 	ap_uint<48> tmp = data(position+47,position);
@@ -136,7 +136,7 @@ void send_gratious_arp(AXI_STREAM &out, ap_uint<48> mac, ap_uint<32> ipv4_addres
 
 }
 
-void read_eth_packet(AXI_STREAM &in, DATA_STREAM &out, eth_settings_t eth_settings, eth_stat_t &eth_stat) {
+void read_eth_packet(AXI_STREAM &in, DATA_STREAM &out, eth_settings_t eth_settings) {
 //TODO: ARP + ICMP would be nice
 	rcv_state_t rcv_state = RCV_INIT;
 	uint64_t packets_read = 0;
@@ -144,14 +144,13 @@ void read_eth_packet(AXI_STREAM &in, DATA_STREAM &out, eth_settings_t eth_settin
 	ap_axiu_for_eth packet_in;
 	data_packet_t packet_out;
 	packet_header_t header;
+
 	packet_out.exit = 0;
+	packet_in.last = 1;
 
-	uint64_t bad_packets = 0;
-	uint64_t good_packets = 0;
-	uint64_t ignored_packets = 0;
-
-	while (packets_read < eth_settings.expected_packets) {
+	while (packet_out.exit == 0) {
 #pragma HLS PIPELINE
+		if (packet_in.last == 1) rcv_state = RCV_INIT;
 		in.read(packet_in);
 		switch (rcv_state) {
 		case RCV_INIT:
@@ -159,12 +158,16 @@ void read_eth_packet(AXI_STREAM &in, DATA_STREAM &out, eth_settings_t eth_settin
 			// UDP port is not checked - should it be as well?
 			if ((header.dest_mac == eth_settings.fpga_mac_addr) && // MAC address
 					(header.ether_type == 0x0800) && // IP
-					(header.ip_version == 4) && // IPv4
+//					(header.ip_version == 4) && // IPv4
 					(header.ipv4_protocol == 0x11) && // UDP
 					(header.ipv4_dest_ip == eth_settings.fpga_ipv4_addr) && // IP address is correct
 					(header.ipv4_total_len == 8268)) {
-				rcv_state = RCV_JF_HEADER;
-				axis_packet = 0;
+				if (header.jf_frame_number < eth_settings.frame_number_to_stop) {
+				   rcv_state = RCV_JF_HEADER;
+				   axis_packet = 0;
+				} else if (header.jf_frame_number < eth_settings.frame_number_to_quit)
+					rcv_state = RCV_IGNORE;
+				else packet_out.exit = 1;
 			}
 			else rcv_state = RCV_IGNORE;
 			break;
@@ -178,7 +181,7 @@ void read_eth_packet(AXI_STREAM &in, DATA_STREAM &out, eth_settings_t eth_settin
 			packet_out.data(303,0) = packet_in.data(511, 208);
 			break;
 		case RCV_GOOD:
-			if (axis_packet == 128) rcv_state = RCV_BAD;
+			if (axis_packet == 128) rcv_state = RCV_IGNORE;
 			else {
 				packet_out.axis_packet = axis_packet;
 				packet_out.data(511,304) = packet_in.data(207, 0);
@@ -188,26 +191,11 @@ void read_eth_packet(AXI_STREAM &in, DATA_STREAM &out, eth_settings_t eth_settin
 				axis_packet++;
 			}
 			break;
-		case RCV_BAD:
 		case RCV_IGNORE:
 			break;
 		}
-		if (packet_in.last == 1) {
-			if ((rcv_state == RCV_BAD) || ((rcv_state != RCV_IGNORE) && (axis_packet != 128)) || (packet_in.user == 1)) {
-				bad_packets++;
-				packets_read++;
-			}
-			else if (rcv_state == RCV_GOOD) {
-				good_packets++;
-				packets_read++;
-			}
-			else if (rcv_state == RCV_IGNORE) ignored_packets++;
-			rcv_state = RCV_INIT;
-		}
+
 	}
-	eth_stat.good_packets = good_packets;
-	eth_stat.bad_packets = bad_packets;
-	eth_stat.ignored_packets = ignored_packets;
-	packet_out.exit = 1;
+
 	out.write(packet_out); // Inform writer, that all is finished
 }

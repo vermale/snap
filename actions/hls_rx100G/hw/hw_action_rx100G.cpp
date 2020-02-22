@@ -83,11 +83,10 @@ void load_data_to_hbm(snap_membus_t *din_gmem, uint64_t in_gain_pedestal_addr,
 	}
 }
 
-void save_pedestal(snap_membus_t *dout_gmem, uint64_t in_gain_pedestal_addr) {
-	size_t offset = in_gain_pedestal_addr + 6 * NPIXEL * 2 / 64;
+void save_pedestal(snap_membus_t *dout_gmem, size_t offset) {
 
 	for (size_t i = 0; i < NPIXEL * 2 / 64 / 8; i ++) {
-#pragma HLS PIPELINE
+#pragma HLS PIPELINE II = 8
 		packed_pedeG0_t tmp[8];
 		ap_uint<512> tmp2[8];
 
@@ -98,7 +97,7 @@ void save_pedestal(snap_membus_t *dout_gmem, uint64_t in_gain_pedestal_addr) {
 }
 
 void process_frames(AXI_STREAM &din_eth,
-		eth_settings_t eth_settings, eth_stat_t &eth_stat,
+		eth_settings_t eth_settings,
 		snap_membus_t *dout_gmem,
 		size_t out_frame_buffer_addr, size_t out_frame_status_addr,
                 snap_HBMbus_t *d_hbm_p0, snap_HBMbus_t *d_hbm_p1,
@@ -113,7 +112,7 @@ void process_frames(AXI_STREAM &din_eth,
 	DATA_STREAM converted;
 #pragma HLS STREAM variable=raw depth=256
 #pragma HLS STREAM variable=converted depth=256
-	read_eth_packet(din_eth, raw, eth_settings, eth_stat);
+	read_eth_packet(din_eth, raw, eth_settings);
 	convert_data(raw, converted,
 			d_hbm_p0, d_hbm_p1,
 			d_hbm_p2, d_hbm_p3,
@@ -141,7 +140,7 @@ static int process_action(snap_membus_t *din_gmem,
 		action_reg *act_reg)
 {
 
-	// HBM Order:
+	// HBM and in-memory order:
 	// p0,p1 - gain G0
 	// p2,p3 - gain G1
 	// p4,p5 - gain G2
@@ -160,12 +159,8 @@ static int process_action(snap_membus_t *din_gmem,
 	eth_settings_t eth_settings;
 	eth_settings.fpga_mac_addr = act_reg->Data.fpga_mac_addr;
 	eth_settings.fpga_ipv4_addr = act_reg->Data.fpga_ipv4_addr;
-	eth_settings.expected_packets = act_reg->Data.packets_to_read;
-
-	eth_stat_t eth_stats;
-	eth_stats.bad_packets = 0;
-	eth_stats.good_packets = 0;
-	eth_stats.ignored_packets = 0;
+	eth_settings.frame_number_to_stop = act_reg->Data.packets_to_read;
+	eth_settings.frame_number_to_stop = act_reg->Data.packets_to_read + 5;
 
 	// Load constants
 	switch(act_reg->Data.mode) {
@@ -179,7 +174,7 @@ static int process_action(snap_membus_t *din_gmem,
 				d_hbm_p10, d_hbm_p11);
 		break;
 	default:
-		process_frames(din_eth, eth_settings, eth_stats, dout_gmem, out_frame_buffer_addr, out_frame_status_addr,
+		process_frames(din_eth, eth_settings, dout_gmem, out_frame_buffer_addr, out_frame_status_addr,
 						d_hbm_p0, d_hbm_p1,
 						d_hbm_p2, d_hbm_p3,
 						d_hbm_p4, d_hbm_p5,
@@ -189,12 +184,20 @@ static int process_action(snap_membus_t *din_gmem,
 						act_reg->Data.mode);
 		break;
 	}
-	if ((act_reg->Data.mode == MODE_PEDEG0) || (act_reg->Data.mode == MODE_PEDEG1)
-			 || (act_reg->Data.mode == MODE_PEDEG2)  || (act_reg->Data.mode == MODE_CONV)) {
-		save_pedestal(dout_gmem, in_gain_pedestal_addr);
+
+	// Save calculated pedestal back to memory
+	switch (act_reg->Data.mode) {
+	case MODE_PEDEG0:
+	case MODE_CONV:
+		save_pedestal(dout_gmem, in_gain_pedestal_addr + 6 * NPIXEL * 2L / 64);
+		break;
+	case MODE_PEDEG1:
+		save_pedestal(dout_gmem, in_gain_pedestal_addr + 3 * NPIXEL * 2L / 64);
+		break;
+	case MODE_PEDEG2:
+		save_pedestal(dout_gmem, in_gain_pedestal_addr + 4 * NPIXEL * 2L / 64);
+		break;
 	}
-	act_reg->Data.good_packets = eth_stats.good_packets;
-	act_reg->Data.bad_packets = eth_stats.bad_packets;
 
 	act_reg->Control.Retc = SNAP_RETC_SUCCESS;
 
