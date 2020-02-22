@@ -21,14 +21,6 @@
 
 packed_pedeG0_t packed_pedeG0[NMODULES * 512 * 1024 / 32];
 
-inline void mask_tkeep(ap_uint<512> &data, ap_uint<64> keep) {
-	for (int i = 0; i < 64; i++) {
-#pragma HLS unroll
-		if (keep[i] == 0) data(i*8+7,i*8) = 0;
-	}
-}
-
-
 void copy_data(snap_membus_t *din_gmem, snap_HBMbus_t *d_hbm0, snap_HBMbus_t *d_hbm1, size_t in_addr) {
 	for (size_t i = 0; i < NMODULES * 512 * 1024 / 32; i ++) {
 		ap_uint<512> tmp = din_gmem[in_addr+i];
@@ -47,7 +39,6 @@ void load_data_to_hbm(snap_membus_t *din_gmem, uint64_t in_gain_pedestal_addr,
                 snap_HBMbus_t *d_hbm_p6, snap_HBMbus_t *d_hbm_p7,
                 snap_HBMbus_t *d_hbm_p8, snap_HBMbus_t *d_hbm_p9,
                 snap_HBMbus_t *d_hbm_p10, snap_HBMbus_t *d_hbm_p11) {
-
 	size_t offset = in_gain_pedestal_addr;
 	for (size_t i = 0; i < NPIXEL * 2 / 64; i ++) {
 #pragma HLS PIPELINE
@@ -95,11 +86,15 @@ void load_data_to_hbm(snap_membus_t *din_gmem, uint64_t in_gain_pedestal_addr,
 void save_pedestal(snap_membus_t *dout_gmem, uint64_t in_gain_pedestal_addr) {
 	size_t offset = in_gain_pedestal_addr + 6 * NPIXEL * 2 / 64;
 
-	for (size_t i = 0; i < NPIXEL * 2 / 64; i ++) {
-	#pragma HLS PIPELINE
-		pack_pede(packed_pedeG0[i], dout_gmem[offset+i]);
-	}
+	for (size_t i = 0; i < NPIXEL * 2 / 64 / 8; i ++) {
+#pragma HLS PIPELINE
+		packed_pedeG0_t tmp[8];
+		ap_uint<512> tmp2[8];
 
+		for (int j = 0; j < 8; j++) tmp[j] = packed_pedeG0[8*i+j];
+		for (int j = 0; j < 8; j++) pack_pede(tmp[j],tmp2[j]);
+		memcpy(dout_gmem+offset+8*i, tmp2, 8*64);
+	}
 }
 
 void process_frames(AXI_STREAM &din_eth,
@@ -196,18 +191,6 @@ static int process_action(snap_membus_t *din_gmem,
 	}
 	if ((act_reg->Data.mode == MODE_PEDEG0) || (act_reg->Data.mode == MODE_PEDEG1)
 			 || (act_reg->Data.mode == MODE_PEDEG2)  || (act_reg->Data.mode == MODE_CONV)) {
-		if (act_reg->Data.mode == MODE_PEDEG1) {
-				Save_pedeG1: for (size_t i = 0; i < NPIXEL * 2 / 64; i ++) {
-	#pragma HLS PIPELINE
-					pack_pedeG1G2(packed_pedeG0[i], d_hbm_p6[i], d_hbm_p7[i]);
-				}
-			}
-		if (act_reg->Data.mode == MODE_PEDEG2) {
-			Save_pedeG2: for (size_t i = 0; i < NPIXEL * 2 / 64; i ++) {
-#pragma HLS PIPELINE
-				pack_pedeG1G2(packed_pedeG0[i], d_hbm_p8[i], d_hbm_p9[i]);
-			}
-		}
 		save_pedestal(dout_gmem, in_gain_pedestal_addr);
 	}
 	act_reg->Data.good_packets = eth_stats.good_packets;

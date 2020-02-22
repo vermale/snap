@@ -29,7 +29,7 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 
 	int counter_ok = 0;
 	int counter_wrong = 0;
-
+/*
 	packet_counter_t packet_counter[STATUS_BUFFER_SIZE];
 	for (int i = 0; i < STATUS_BUFFER_SIZE; i++) {
 #pragma HLS UNROLL
@@ -38,7 +38,7 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 			packet_counter[i].counter[j] = 0;
 		}
 	}
-
+*/
 	uint64_t head[NMODULES]; // number of the newest packet received for the frame
 	for (int i = 0; i < NMODULES; i++) {
 #pragma HLS UNROLL
@@ -48,7 +48,7 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 	while (packet_in.exit == 0) {
 		Loop_good_packet: while ((packet_in.exit == 0) && (packet_in.axis_packet == 0)) {
 			// TODO: accounting which packets were converted
-#pragma HLS PIPELINE II=130
+#pragma HLS PIPELINE II=129
 			size_t out_frame_addr = out_frame_buffer_addr +
 					       (packet_in.frame_number % FRAME_BUF_SIZE) * (NMODULES * MODULE_COLS * MODULE_LINES / 32) +
 							packet_in.module * (MODULE_COLS * MODULE_LINES/32) +
@@ -62,14 +62,14 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 			ap_uint<4> module0 = packet_in.module;
 			ap_uint<8> eth_packet0 = packet_in.eth_packet;
 
-			size_t packet_counter_addr = (module0 + frame_number0 * NMODULES) % (64 * STATUS_BUFFER_SIZE);
+			//size_t packet_counter_addr = (module0 + frame_number0 * NMODULES) % (64 * STATUS_BUFFER_SIZE);
 
-			bool is_head = false;
+			//bool is_head = false;
 
 			if (packet_in.frame_number > head[packet_in.module]) {
-				is_head = true;
-				for (int i = 0; i < NMODULES; i++)
-					if (head[i] >= packet_in.frame_number) is_head = false;
+				//is_head = true;
+				//for (int i = 0; i < NMODULES; i++)
+				//	if (head[i] >= packet_in.frame_number) is_head = false;
 
 				head[packet_in.module] = packet_in.frame_number;
 				ap_uint<512> statistics;
@@ -91,7 +91,7 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 			}
 
 			memcpy(dout_gmem + out_frame_addr+64, buffer, 128*64);
-
+			/*
 			// If this is first frame with this number AND It starts new 64
 			if ((is_head) && ((frame_number0 * NMODULES) % 64 == 0)) {
 				// Save data from old counter, before new buffer can be filled
@@ -104,10 +104,10 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 				}
 				// Start a new packet counter
 				for (int i = 0; i < 64; i++) packet_counter[packet_counter_addr/64].counter[i] = 0;
-			}
+			} */
 			if (((packet_in.axis_packet == 0) || (packet_in.exit == 1))  && (last_axis_user == 0)) {
 				counter_ok++;
-				packet_counter[packet_counter_addr / 64].counter[packet_counter_addr % 64]++;
+				//packet_counter[packet_counter_addr / 64].counter[packet_counter_addr % 64]++;
 			} else counter_wrong++;
 		}
 		Loop_err_packet: while ((packet_in.exit == 0) && (packet_in.axis_packet != 0)) {
@@ -115,13 +115,13 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 			in.read(packet_in);
 		}
 	}
-
+/*
 	for (int i = 0; i < STATUS_BUFFER_SIZE; i++) {
 #pragma HLS UNROLL
 		ap_uint<512> tmp;
 		for (int j = 0; j < 512; j++) tmp[j] = packet_counter[i].counter[j/8][j%8];
 		memcpy(dout_gmem + out_frame_status_addr + 1 + (packet_counter[i].head * NMODULES / 64), &tmp, 64);
 	}
-
+*/
 
 }

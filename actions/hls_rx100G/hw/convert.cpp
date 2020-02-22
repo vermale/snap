@@ -16,22 +16,6 @@
 
 #include "hw_action_rx100G.h"
 
-inline void unpack_pedeG1G2(ap_uint<512> in, pedeG1G2_t outp[32]) {
-	for (int i = 0; i < 32; i ++) {
-		for (int j = 0; j < 16; j ++) {
-			outp[i][j] = in[i*16+j];
-		}
-	}
-}
-
-inline void unpack_gainG1G2(ap_uint<512> in, gainG1G2_t outg[32]) {
-	for (int i = 0; i < 32; i ++) {
-		for (int j = 0; j < 16; j ++) {
-			outg[i][j] = in[i*16+j];
-		}
-	}
-}
-
 inline void load(ap_uint<512> &out, snap_HBMbus_t *d_hbm_p0, snap_HBMbus_t *d_hbm_p1, size_t offset) {
 	out(511,256) = d_hbm_p1[offset];
 	out(255,0) = d_hbm_p0[offset];
@@ -189,6 +173,7 @@ void convert_and_shuffle(ap_uint<512> data_in, ap_uint<512>& data_out,
 		ap_uint<256> packed_pedeG2_1, ap_uint<256> packed_pedeG2_2,
 		ap_uint<256> packed_gainG2_1, ap_uint<256> packed_gainG2_2) {
 #pragma HLS PIPELINE
+
 	const ap_fixed<18,16, SC_RND_CONV> half = 0.5f;
 
 	ap_uint<16> in_val[32];
