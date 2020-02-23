@@ -110,6 +110,8 @@ struct packet_header_t {
 };
 
 typedef ap_ufixed<PEDE_G0_PRECISION,14, SC_RND_CONV> pedeG0_t;
+typedef ap_fixed<PEDE_G0_PRECISION+1,14, SC_RND_CONV> pedeG0_signed_t;
+
 typedef ap_ufixed<16,2, SC_RND_CONV>  gainG0_t;
 typedef ap_ufixed<16,12, SC_RND_CONV> pedeG0RMS_t;
 
@@ -164,14 +166,15 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem,
 
 void pedestal_update(ap_uint<512> data_in, packed_pedeG0_t& packed_pede, ap_uint<32> &mask, ap_uint<2> exp_gain, uint64_t frame_number);
 
-void convert_and_shuffle(ap_uint<512> data_in, ap_uint<512>& data_out,
+void convert_and_shuffle(ap_uint<512> data_in, ap_uint<512> &data_out,
 		packed_pedeG0_t& packed_pedeG0,
 		ap_uint<256> packed_pedeG0RMS_1, ap_uint<256> packed_pedeG0RMS_2,
 		ap_uint<256> packed_gainG0_1, ap_uint<256> packed_gainG0_2,
 		ap_uint<256> packed_pedeG1_1, ap_uint<256> packed_pedeG1_2,
 		ap_uint<256> packed_gainG1_1, ap_uint<256> packed_gainG1_2,
 		ap_uint<256> packed_pedeG2_1, ap_uint<256> packed_pedeG2_2,
-		ap_uint<256> packed_gainG2_1, ap_uint<256> packed_gainG2_2);
+		ap_uint<256> packed_gainG2_1, ap_uint<256> packed_gainG2_2,
+		const ap_uint<8> mode);
 
 void convert_and_shuffle(ap_uint<512> data_in, ap_uint<512>& data_out,
 		packed_pedeG0_t& packed_pedeG0, ap_uint<512> packed_pedeG0RMS, ap_uint<512> packed_gainG0,

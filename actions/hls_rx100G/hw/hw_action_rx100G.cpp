@@ -96,7 +96,7 @@ void save_pedestal(snap_membus_t *dout_gmem, size_t offset) {
 	}
 }
 
-void process_frames(AXI_STREAM &din_eth,
+void collect_data(AXI_STREAM &din_eth,
 		eth_settings_t eth_settings,
 		snap_membus_t *dout_gmem,
 		size_t out_frame_buffer_addr, size_t out_frame_status_addr,
@@ -174,7 +174,7 @@ static int process_action(snap_membus_t *din_gmem,
 				d_hbm_p10, d_hbm_p11);
 		break;
 	default:
-		process_frames(din_eth, eth_settings, dout_gmem, out_frame_buffer_addr, out_frame_status_addr,
+		collect_data(din_eth, eth_settings, dout_gmem, out_frame_buffer_addr, out_frame_status_addr,
 						d_hbm_p0, d_hbm_p1,
 						d_hbm_p2, d_hbm_p3,
 						d_hbm_p4, d_hbm_p5,
