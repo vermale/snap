@@ -53,114 +53,73 @@ void convert_data(DATA_STREAM &in, DATA_STREAM &out,
 	data_packet_t packet_in, packet_out;
 	in.read(packet_in);
 
-	switch (mode) {
-	case MODE_RAW:
-		Just_forward: while (packet_in.exit != 1) {
-#pragma HLS pipeline
-			out.write(packet_in);
-			in.read(packet_in);
-		}
-	out.write(packet_in);
-	break;
-
-	case MODE_CONV:
-		while (packet_in.exit != 1) {
-			Convert_and_forward: while ((packet_in.exit != 1) && (packet_in.axis_packet % BURST_SIZE == 0)) {
+	while (packet_in.exit != 1) {
+		Convert_and_forward: while ((packet_in.exit != 1) && (packet_in.axis_packet % BURST_SIZE == 0)) {
 #pragma HLS pipeline II = 8
-				size_t offset = packet_in.module * 128 * 128 + 128 * packet_in.eth_packet + packet_in.axis_packet;
-				// HBM Order:
-				// p0,p1 - gain G0
-				// p2,p3 - gain G1
-				// p4,p5 - gain G2
-				// p6,p7 - pedestal G1
-				// p8,p9 - pedestal G2
-				// p10,p11 - pedestal G0 RMS
+			size_t offset = packet_in.module * 128 * 128 + 128 * packet_in.eth_packet + packet_in.axis_packet;
+			// HBM Order:
+			// p0,p1 - gain G0
+			// p2,p3 - gain G1
+			// p4,p5 - gain G2
+			// p6,p7 - pedestal G1
+			// p8,p9 - pedestal G2
+			// p10,p11 - pedestal G0 RMS
 
-				// TODO: Simpilfy!!!
-				ap_uint<256> packed_gainG0_1[BURST_SIZE], packed_gainG0_2[BURST_SIZE];
-				ap_uint<256> packed_gainG1_1[BURST_SIZE], packed_gainG1_2[BURST_SIZE];
-				ap_uint<256> packed_gainG2_1[BURST_SIZE], packed_gainG2_2[BURST_SIZE];
-				ap_uint<256> packed_pedeG1_1[BURST_SIZE], packed_pedeG1_2[BURST_SIZE];
-				ap_uint<256> packed_pedeG2_1[BURST_SIZE], packed_pedeG2_2[BURST_SIZE];
-				ap_uint<256> packed_pedeG0RMS_1[BURST_SIZE], packed_pedeG0RMS_2[BURST_SIZE];
+			ap_uint<256> packed_gainG0_1[BURST_SIZE], packed_gainG0_2[BURST_SIZE];
+			ap_uint<256> packed_gainG1_1[BURST_SIZE], packed_gainG1_2[BURST_SIZE];
+			ap_uint<256> packed_gainG2_1[BURST_SIZE], packed_gainG2_2[BURST_SIZE];
+			ap_uint<256> packed_pedeG1_1[BURST_SIZE], packed_pedeG1_2[BURST_SIZE];
+			ap_uint<256> packed_pedeG2_1[BURST_SIZE], packed_pedeG2_2[BURST_SIZE];
+			ap_uint<256> packed_pedeG0RMS_1[BURST_SIZE], packed_pedeG0RMS_2[BURST_SIZE];
 
-				memcpy(packed_gainG0_1,d_hbm_p0+offset, BURST_SIZE*32);
-				memcpy(packed_gainG0_2,d_hbm_p1+offset, BURST_SIZE*32);
-				memcpy(packed_gainG1_1,d_hbm_p2+offset, BURST_SIZE*32);
-				memcpy(packed_gainG1_2,d_hbm_p3+offset, BURST_SIZE*32);
-				memcpy(packed_gainG2_1,d_hbm_p4+offset, BURST_SIZE*32);
-				memcpy(packed_gainG2_2,d_hbm_p5+offset, BURST_SIZE*32);
-				memcpy(packed_pedeG1_1,d_hbm_p6+offset, BURST_SIZE*32);
-				memcpy(packed_pedeG1_2,d_hbm_p7+offset, BURST_SIZE*32);
-				memcpy(packed_pedeG2_1,d_hbm_p8+offset, BURST_SIZE*32);
-				memcpy(packed_pedeG2_2,d_hbm_p9+offset, BURST_SIZE*32);
-				memcpy(packed_pedeG0RMS_1,d_hbm_p10+offset, BURST_SIZE*32);
-				memcpy(packed_pedeG0RMS_2,d_hbm_p11+offset, BURST_SIZE*32);
 
-				data_packet_t packet_buffer[BURST_SIZE];
-				for (int i = 0; i < BURST_SIZE; i ++) {
-					in.read(packet_buffer[i]);
-				}
-				for (int i = 0; i < BURST_SIZE; i ++) {
-						ap_uint<512> tmp_out;
-						convert_and_shuffle(packet_buffer[i].data, tmp_out, packed_pedeG0[offset+i],
-								packed_pedeG0RMS_1[i], packed_pedeG0RMS_2[i], packed_gainG0_1[i], packed_gainG0_2[i],
-								packed_pedeG1_1[i], packed_pedeG1_2[i], packed_gainG1_1[i], packed_gainG1_2[i],
-								packed_pedeG2_1[i], packed_pedeG1_2[i], packed_gainG2_1[i], packed_gainG2_2[i]);
-						packet_buffer[i].data = tmp_out;
-				}
-				for (int i = 0; i < BURST_SIZE; i ++) {
-					out.write(packet_buffer[i]);
+			memcpy(packed_gainG0_1,d_hbm_p0+offset, BURST_SIZE*32);
+			memcpy(packed_gainG0_2,d_hbm_p1+offset, BURST_SIZE*32);
+			memcpy(packed_gainG1_1,d_hbm_p2+offset, BURST_SIZE*32);
+			memcpy(packed_gainG1_2,d_hbm_p3+offset, BURST_SIZE*32);
+			memcpy(packed_gainG2_1,d_hbm_p4+offset, BURST_SIZE*32);
+			memcpy(packed_gainG2_2,d_hbm_p5+offset, BURST_SIZE*32);
+			memcpy(packed_pedeG1_1,d_hbm_p6+offset, BURST_SIZE*32);
+			memcpy(packed_pedeG1_2,d_hbm_p7+offset, BURST_SIZE*32);
+			memcpy(packed_pedeG2_1,d_hbm_p8+offset, BURST_SIZE*32);
+			memcpy(packed_pedeG2_2,d_hbm_p9+offset, BURST_SIZE*32);
+			memcpy(packed_pedeG0RMS_1,d_hbm_p10+offset, BURST_SIZE*32);
+			memcpy(packed_pedeG0RMS_2,d_hbm_p11+offset, BURST_SIZE*32);
+
+			data_packet_t packet_buffer[BURST_SIZE];
+			for (int i = 0; i < BURST_SIZE; i ++) {
+				in.read(packet_buffer[i]);
+			}
+			for (int i = 0; i < BURST_SIZE; i ++) {
+				ap_uint<512> tmp_out;
+				switch (mode) {
+				case MODE_RAW:
+					break;
+				case MODE_CONV:
+					convert_and_shuffle(packet_buffer[i].data, tmp_out, packed_pedeG0[offset+i],
+							packed_pedeG0RMS_1[i], packed_pedeG0RMS_2[i], packed_gainG0_1[i], packed_gainG0_2[i],
+							packed_pedeG1_1[i], packed_pedeG1_2[i], packed_gainG1_1[i], packed_gainG1_2[i],
+							packed_pedeG2_1[i], packed_pedeG1_2[i], packed_gainG2_1[i], packed_gainG2_2[i]);
+					packet_buffer[i].data = tmp_out;
+					break;
+				case MODE_PEDEG0:
+					pedestal_update(packet_buffer[i].data, packed_pedeG0[offset+i], 0);
+					break;
+				case MODE_PEDEG1:
+					pedestal_update(packet_buffer[i].data, packed_pedeG0[offset+i], 1);
+					break;
+				case MODE_PEDEG2:
+					pedestal_update(packet_buffer[i].data, packed_pedeG0[offset+i], 2);
+					break;
 				}
 			}
-			while ((packet_in.exit != 1) && (packet_in.axis_packet % BURST_SIZE != 0)) in.read(packet_in);
-		}
-		out.write(packet_in);
-		break;
-
-	case MODE_PEDEG0:
-		while (packet_in.exit != 1) {
-			while ((packet_in.exit != 1) && (packet_in.axis_packet % BURST_SIZE == 0)) {
-#pragma HLS pipeline II = 8
-				size_t offset = packet_in.module * 128 * 128 + 128 * packet_in.eth_packet + packet_in.axis_packet;
-				for (int i = 0; i < BURST_SIZE; i ++) {
-					pedestal_update(packet_in.data, packed_pedeG0[offset+i], 0);
-					in.read(packet_in);
-				}
+			for (int i = 0; i < BURST_SIZE; i ++) {
+				out.write(packet_buffer[i]);
 			}
-			while ((packet_in.exit != 1) && (packet_in.axis_packet % BURST_SIZE != 0)) in.read(packet_in);
 		}
-		out.write(packet_in);
-		break;
-
-	case MODE_PEDEG1:
-		while (packet_in.exit != 1) {
-			while ((packet_in.exit != 1) && (packet_in.axis_packet % BURST_SIZE == 0)) {
-#pragma HLS pipeline II = 8
-				size_t offset = packet_in.module * 128 * 128 + 128 * packet_in.eth_packet + packet_in.axis_packet;
-				for (int i = 0; i < BURST_SIZE; i ++) {
-					pedestal_update(packet_in.data, packed_pedeG0[offset+i], 0);
-					in.read(packet_in);
-				}
-			}
-			while ((packet_in.exit != 1) && (packet_in.axis_packet % BURST_SIZE != 0)) in.read(packet_in);
-		}
-		out.write(packet_in);
-		break;
-	case MODE_PEDEG2:
-		while (packet_in.exit != 1) {
-			while ((packet_in.exit != 1) && (packet_in.axis_packet % BURST_SIZE == 0)) {
-#pragma HLS pipeline II = 8
-				size_t offset = packet_in.module * 128 * 128 + 128 * packet_in.eth_packet + packet_in.axis_packet;
-				for (int i = 0; i < BURST_SIZE; i ++) {
-					pedestal_update(packet_in.data, packed_pedeG0[offset+i], 0);
-					in.read(packet_in);
-				}
-			}
-			while ((packet_in.exit != 1) && (packet_in.axis_packet % BURST_SIZE != 0)) in.read(packet_in);
-		}
-		out.write(packet_in);
+		while ((packet_in.exit != 1) && (packet_in.axis_packet % BURST_SIZE != 0)) in.read(packet_in);
 	}
+	out.write(packet_in);
 }
 
 

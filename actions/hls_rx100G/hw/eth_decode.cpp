@@ -162,12 +162,13 @@ void read_eth_packet(AXI_STREAM &in, DATA_STREAM &out, eth_settings_t eth_settin
 					(header.ipv4_protocol == 0x11) && // UDP
 					(header.ipv4_dest_ip == eth_settings.fpga_ipv4_addr) && // IP address is correct
 					(header.ipv4_total_len == 8268)) {
+				// Frame number counts from 0 (it is shifted by one vs. JUNGFRAU header info
 				if (header.jf_frame_number < eth_settings.frame_number_to_stop) {
 				   rcv_state = RCV_JF_HEADER;
 				   axis_packet = 0;
 				} else if (header.jf_frame_number < eth_settings.frame_number_to_quit)
 					rcv_state = RCV_IGNORE;
-				else packet_out.exit = 1;
+				else packet_out.exit = 1; // Quit if frame number reported is >= frame_number_to_quit
 			}
 			else rcv_state = RCV_IGNORE;
 			break;
@@ -181,15 +182,13 @@ void read_eth_packet(AXI_STREAM &in, DATA_STREAM &out, eth_settings_t eth_settin
 			packet_out.data(303,0) = packet_in.data(511, 208);
 			break;
 		case RCV_GOOD:
+			packet_out.axis_packet = axis_packet;
+			packet_out.data(511,304) = packet_in.data(207, 0);
+			out.write(packet_out);
+			packet_out.data(303,0) = packet_in.data(511, 208);
+			packet_out.axis_user = packet_in.user;
+			axis_packet++;
 			if (axis_packet == 128) rcv_state = RCV_IGNORE;
-			else {
-				packet_out.axis_packet = axis_packet;
-				packet_out.data(511,304) = packet_in.data(207, 0);
-				out.write(packet_out);
-				packet_out.data(303,0) = packet_in.data(511, 208);
-				packet_out.axis_user = packet_in.user;
-				axis_packet++;
-			}
 			break;
 		case RCV_IGNORE:
 			break;
