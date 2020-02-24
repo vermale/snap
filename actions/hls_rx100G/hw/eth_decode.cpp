@@ -136,8 +136,7 @@ void send_gratious_arp(AXI_STREAM &out, ap_uint<48> mac, ap_uint<32> ipv4_addres
 
 }
 
-void read_eth_packet(AXI_STREAM &in, DATA_STREAM &out, eth_settings_t eth_settings) {
-//TODO: ARP + ICMP would be nice
+void read_eth_packet(AXI_STREAM &in, DATA_STREAM &out, eth_settings_t eth_settings, snap_HBMbus_t *d_hbm_header) {
 	rcv_state_t rcv_state = RCV_INIT;
 	uint64_t packets_read = 0;
 	ap_uint<8> axis_packet = 0; // 0..256 , but >=128 means error
@@ -146,11 +145,9 @@ void read_eth_packet(AXI_STREAM &in, DATA_STREAM &out, eth_settings_t eth_settin
 	packet_header_t header;
 
 	packet_out.exit = 0;
-	packet_in.last = 1;
 
 	while (packet_out.exit == 0) {
 #pragma HLS PIPELINE
-		if (packet_in.last == 1) rcv_state = RCV_INIT;
 		in.read(packet_in);
 		switch (rcv_state) {
 		case RCV_INIT:
@@ -164,8 +161,12 @@ void read_eth_packet(AXI_STREAM &in, DATA_STREAM &out, eth_settings_t eth_settin
 					(header.ipv4_total_len == 8268)) {
 				// Frame number counts from 0 (it is shifted by one vs. JUNGFRAU header info
 				if (header.jf_frame_number < eth_settings.frame_number_to_stop) {
-				   rcv_state = RCV_JF_HEADER;
 				   axis_packet = 0;
+				   if (header.jf_packet_number == 0) {
+					   size_t hbm_addr = header.jf_frame_number * NMODULES + (header.udp_dest_port % NMODULES);
+					   d_hbm_header[2*hbm_addr] = packet_in.data(511,256);
+				   }
+				   rcv_state = RCV_JF_HEADER;
 				} else if (header.jf_frame_number < eth_settings.frame_number_to_quit)
 					rcv_state = RCV_IGNORE;
 				else packet_out.exit = 1; // Quit if frame number reported is >= frame_number_to_quit
@@ -173,13 +174,17 @@ void read_eth_packet(AXI_STREAM &in, DATA_STREAM &out, eth_settings_t eth_settin
 			else rcv_state = RCV_IGNORE;
 			break;
 		case RCV_JF_HEADER:
-			rcv_state = RCV_GOOD;
 			decode_eth_2(packet_in.data, header);
 			packet_out.frame_number = header.jf_frame_number;
 			packet_out.eth_packet = header.jf_packet_number;
 			packet_out.module = header.udp_dest_port % NMODULES;
 			packet_out.trigger = header.jf_debug[31];
 			packet_out.data(303,0) = packet_in.data(511, 208);
+			if (header.jf_packet_number == 0) {
+				size_t hbm_addr = header.jf_frame_number * NMODULES + (header.udp_dest_port % NMODULES);
+				d_hbm_header[2*hbm_addr+1] = packet_in.data(255,0);
+			}
+			rcv_state = RCV_GOOD;
 			break;
 		case RCV_GOOD:
 			packet_out.axis_packet = axis_packet;
@@ -193,7 +198,7 @@ void read_eth_packet(AXI_STREAM &in, DATA_STREAM &out, eth_settings_t eth_settin
 		case RCV_IGNORE:
 			break;
 		}
-
+		if (packet_in.last == 1) rcv_state = RCV_INIT;
 	}
 
 	out.write(packet_out); // Inform writer, that all is finished

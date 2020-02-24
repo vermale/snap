@@ -147,7 +147,7 @@ void data_pack(ap_uint<512> &out, ap_int<16> in[32]);
 
 void send_gratious_arp(AXI_STREAM &out, ap_uint<48> mac, ap_uint<32> ipv4_address);
 
-void read_eth_packet(AXI_STREAM &deth_in, DATA_STREAM &raw_out, eth_settings_t eth_settings);
+void read_eth_packet(AXI_STREAM &deth_in, DATA_STREAM &raw_out, eth_settings_t eth_settings, snap_HBMbus_t *d_hbm_header);
 
 void filter_packets(DATA_STREAM &in, DATA_STREAM &out);
 
@@ -157,18 +157,16 @@ void convert_data(DATA_STREAM &in, DATA_STREAM &out,
 		snap_HBMbus_t *d_hbm_p4, snap_HBMbus_t *d_hbm_p5,
 		snap_HBMbus_t *d_hbm_p6, snap_HBMbus_t *d_hbm_p7,
 		snap_HBMbus_t *d_hbm_p8, snap_HBMbus_t *d_hbm_p9,
-		snap_HBMbus_t *d_hbm_p10, snap_HBMbus_t *d_hbm_p11,
 		ap_uint<8> mode);
 
 
 void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem,
-		size_t out_frame_buffer_addr, size_t out_frame_status_addr);
+		size_t out_frame_buffer_addr, size_t out_frame_status_addr, snap_HBMbus_t *d_hbm_stat);
 
 void pedestal_update(ap_uint<512> data_in, packed_pedeG0_t& packed_pede, ap_uint<32> &mask, ap_uint<2> exp_gain, uint64_t frame_number);
 
 void convert_and_shuffle(ap_uint<512> data_in, ap_uint<512> &data_out,
 		packed_pedeG0_t& packed_pedeG0,
-		ap_uint<256> packed_pedeG0RMS_1, ap_uint<256> packed_pedeG0RMS_2,
 		ap_uint<256> packed_gainG0_1, ap_uint<256> packed_gainG0_2,
 		ap_uint<256> packed_pedeG1_1, ap_uint<256> packed_pedeG1_2,
 		ap_uint<256> packed_gainG1_1, ap_uint<256> packed_gainG1_2,

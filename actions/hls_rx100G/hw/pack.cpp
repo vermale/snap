@@ -109,6 +109,15 @@ void unpack_pedeG1G2(ap_uint<256> in_1, ap_uint<256> in_2, pedeG1G2_t outp[32]) 
 	}
 }
 
+void unpack_pedeG1G2(ap_uint<512> in, pedeG1G2_t outp[32]) {
+#pragma HLS INLINE
+#pragma HLS PIPELINE
+	for (int i = 0; i < 32; i ++) {
+		for (int j = 0; j < 16; j ++) {
+			outp[i][j] = in[i*16+j];
+		}
+	}
+}
 void unpack_gainG1G2(ap_uint<256> in_1, ap_uint<256> in_2, gainG1G2_t outg[32]) {
 #pragma HLS INLINE
 	#pragma HLS PIPELINE

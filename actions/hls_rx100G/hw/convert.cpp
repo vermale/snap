@@ -47,7 +47,6 @@ void convert_data(DATA_STREAM &in, DATA_STREAM &out,
 		snap_HBMbus_t *d_hbm_p4, snap_HBMbus_t *d_hbm_p5,
 		snap_HBMbus_t *d_hbm_p6, snap_HBMbus_t *d_hbm_p7,
 		snap_HBMbus_t *d_hbm_p8, snap_HBMbus_t *d_hbm_p9,
-		snap_HBMbus_t *d_hbm_p10, snap_HBMbus_t *d_hbm_p11,
 		ap_uint<8> mode) {
 
 	data_packet_t packet_in, packet_out;
@@ -63,15 +62,12 @@ void convert_data(DATA_STREAM &in, DATA_STREAM &out,
 			// p4,p5 - gain G2
 			// p6,p7 - pedestal G1
 			// p8,p9 - pedestal G2
-			// p10,p11 - pedestal G0 RMS
 
 			ap_uint<256> packed_gainG0_1[BURST_SIZE], packed_gainG0_2[BURST_SIZE];
 			ap_uint<256> packed_gainG1_1[BURST_SIZE], packed_gainG1_2[BURST_SIZE];
 			ap_uint<256> packed_gainG2_1[BURST_SIZE], packed_gainG2_2[BURST_SIZE];
 			ap_uint<256> packed_pedeG1_1[BURST_SIZE], packed_pedeG1_2[BURST_SIZE];
 			ap_uint<256> packed_pedeG2_1[BURST_SIZE], packed_pedeG2_2[BURST_SIZE];
-			ap_uint<256> packed_pedeG0RMS_1[BURST_SIZE], packed_pedeG0RMS_2[BURST_SIZE];
-
 
 			memcpy(packed_gainG0_1,d_hbm_p0+offset, BURST_SIZE*32);
 			memcpy(packed_gainG0_2,d_hbm_p1+offset, BURST_SIZE*32);
@@ -83,8 +79,6 @@ void convert_data(DATA_STREAM &in, DATA_STREAM &out,
 			memcpy(packed_pedeG1_2,d_hbm_p7+offset, BURST_SIZE*32);
 			memcpy(packed_pedeG2_1,d_hbm_p8+offset, BURST_SIZE*32);
 			memcpy(packed_pedeG2_2,d_hbm_p9+offset, BURST_SIZE*32);
-			memcpy(packed_pedeG0RMS_1,d_hbm_p10+offset, BURST_SIZE*32);
-			memcpy(packed_pedeG0RMS_2,d_hbm_p11+offset, BURST_SIZE*32);
 
 			data_packet_t packet_buffer[BURST_SIZE];
 			for (int i = 0; i < BURST_SIZE; i ++) {
@@ -93,11 +87,11 @@ void convert_data(DATA_STREAM &in, DATA_STREAM &out,
 			for (int i = 0; i < BURST_SIZE; i ++) {
 				ap_uint<512> tmp;
 				convert_and_shuffle(packet_buffer[i].data, tmp, packed_pedeG0[offset+i],
-						packed_pedeG0RMS_1[i], packed_pedeG0RMS_2[i], packed_gainG0_1[i], packed_gainG0_2[i],
+						packed_gainG0_1[i], packed_gainG0_2[i],
 						packed_pedeG1_1[i], packed_pedeG1_2[i], packed_gainG1_1[i], packed_gainG1_2[i],
 						packed_pedeG2_1[i], packed_pedeG1_2[i], packed_gainG2_1[i], packed_gainG2_2[i],
 						mode);
-				packet_buffer[i].data = tmp;
+				if (mode == MODE_CONV) packet_buffer[i].data = tmp;
 
 			}
 			for (int i = 0; i < BURST_SIZE; i ++) {
@@ -112,7 +106,6 @@ void convert_data(DATA_STREAM &in, DATA_STREAM &out,
 
 void convert_and_shuffle(ap_uint<512> data_in, ap_uint<512> &data_out,
 		packed_pedeG0_t& packed_pedeG0,
-		ap_uint<256> packed_pedeG0RMS_1, ap_uint<256> packed_pedeG0RMS_2,
 		ap_uint<256> packed_gainG0_1, ap_uint<256> packed_gainG0_2,
 		ap_uint<256> packed_pedeG1_1, ap_uint<256> packed_pedeG1_2,
 		ap_uint<256> packed_gainG1_1, ap_uint<256> packed_gainG1_2,
@@ -137,7 +130,7 @@ void convert_and_shuffle(ap_uint<512> data_in, ap_uint<512> &data_out,
 
 	unpack_pedeG0(packed_pedeG0, pedeG0);
 
-	unpack_pedeG0RMS(packed_pedeG0RMS_1, packed_pedeG0RMS_2, pedeG0RMS);
+	//unpack_pedeG0RMS(packed_pedeG0RMS_1, packed_pedeG0RMS_2, pedeG0RMS);
 	unpack_gainG0  (packed_gainG0_1, packed_gainG0_2, gainG0);
 	unpack_pedeG1G2(packed_pedeG1_1, packed_pedeG1_2, pedeG1);
 	unpack_pedeG1G2(packed_pedeG2_1, packed_pedeG2_2, pedeG2);
@@ -150,18 +143,15 @@ void convert_and_shuffle(ap_uint<512> data_in, ap_uint<512> &data_out,
 			else if (in_val[i] == 0xc000) out_val[i] = -32700; //cannot saturate G1
 			else {
 				ap_fixed<18,16, SC_RND_CONV> val_diff;
-				ap_fixed<18,16, SC_RND_CONV> val_result;
+				ap_fixed<18,16, SC_RND_CONV> val_result = 0;
 				ap_uint<2> gain = in_val[i] >>14;
 				ap_uint<14> adu = in_val[i]; // take first two bits
 				switch (gain) {
 				case 0: {
 					ap_ufixed<24,14, SC_RND_CONV> val_pede;
 					val_pede = pedeG0[i];
-					if ((adu - val_pede < pedeG0RMS[i]) || (mode == MODE_PEDEG0)) {
-						val_pede += (adu - val_pede) / 128;
-						pedeG0[i] = val_pede;
-					}
 					val_diff = adu - val_pede;
+					if (mode == MODE_PEDEG0) pedeG0[i] += ((pedeG0_signed_t) val_diff) / 128;
 					val_result = val_diff * (gainG0[i] / 512);
 					if (val_result >= 0)
 						out_val[i] = val_result + half;
@@ -169,11 +159,11 @@ void convert_and_shuffle(ap_uint<512> data_in, ap_uint<512> &data_out,
 					break;
 				}
 				case 1: {
-
-					if (mode == MODE_PEDEG1) {
-						pedeG0[i] += (adu - pedeG0[i]) / 128;
-					}
 					val_diff     = pedeG1[i] - adu;
+					if (mode == MODE_PEDEG1) {
+						pedeG0[i] += ((pedeG0_signed_t) val_diff) / -128;
+					}
+
 					val_result   =  val_diff * gainG1[i];
 					if (val_result >= 0)
 						out_val[i] = val_result + half;
@@ -184,10 +174,11 @@ void convert_and_shuffle(ap_uint<512> data_in, ap_uint<512> &data_out,
 					out_val[i] = -32700;
 					break;
 				case 3: {
-					if (mode == MODE_PEDEG2) {
-						pedeG0[i] += (adu - pedeG0[i]) / 128;
-					}
 					val_diff     = pedeG2[i] - adu;
+					if (mode == MODE_PEDEG2) {
+						pedeG0[i] += ((pedeG0_signed_t) val_diff) / -128;
+					}
+
 					val_result   = val_diff * gainG2[i];
 					if (val_result >= 0)
 						out_val[i] = val_result + half;
@@ -198,7 +189,6 @@ void convert_and_shuffle(ap_uint<512> data_in, ap_uint<512> &data_out,
 
 			}
 		}
-
 		pack_pedeG0(packed_pedeG0, pedeG0);
 		data_shuffle(data_out, out_val);
 }

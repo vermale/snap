@@ -23,7 +23,7 @@ struct packet_counter_t {
 	ap_uint<8> counter[64];
 };
 
-void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buffer_addr, size_t out_frame_status_addr) {
+void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buffer_addr, size_t out_frame_status_addr, snap_HBMbus_t *d_hbm_stat) {
 	data_packet_t packet_in;
 	in.read(packet_in);
 
@@ -40,9 +40,10 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 	}
 */
 	uint64_t head[NMODULES]; // number of the newest packet received for the frame
+#pragma HLS RESOURCE variable=head core=RAM_1P_LUTRAM
 	for (int i = 0; i < NMODULES; i++) {
 #pragma HLS UNROLL
-		head[i] = 0;
+		head[i] = 0L;
 	}
 
 	while (packet_in.exit == 0) {
@@ -107,6 +108,10 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 			} */
 			if (((packet_in.axis_packet == 0) || (packet_in.exit == 1))  && (last_axis_user == 0)) {
 				counter_ok++;
+				size_t hbm_addr = packet_in.frame_number * 128 * NMODULES + packet_in.module * 128 + packet_in.eth_packet;
+				ap_uint<256> tmp = d_hbm_stat[hbm_addr / 256];
+				tmp[hbm_addr%256] = 1;
+				d_hbm_stat[hbm_addr / 256] = tmp;
 				//packet_counter[packet_counter_addr / 64].counter[packet_counter_addr % 64]++;
 			} else counter_wrong++;
 		}
