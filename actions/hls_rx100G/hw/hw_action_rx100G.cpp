@@ -83,9 +83,9 @@ d_hbm_p1[i] = tmp(511,256);
 }
 
 void save_pedestal(snap_membus_t *dout_gmem, size_t offset) {
-
 	for (size_t i = 0; i < NPIXEL * 2 / 64 / 8; i ++) {
 #pragma HLS PIPELINE II = 8
+
 		packed_pedeG0_t tmp[8];
 		ap_uint<512> tmp2[8];
 
@@ -111,6 +111,26 @@ void load_pedestal(snap_membus_t *din_gmem, size_t offset) {
 		for (int j = 0; j < 8; j++) packed_pedeG0[8*i+j] = tmp[j];
 	}
 }
+
+// Taken from HBM_memcopy action
+//convert buffer 256b to 512b
+static void HBMbus_to_membus(snap_HBMbus_t *data_in, snap_membus_t *data_out,
+                             uint64_t size_in_words_512)
+{
+#pragma HLS INLINE off
+        static snap_membus_t data_entry = 0;
+
+        hbm2mem_loop:
+        for (int k=0; k<size_in_words_512; k++) {
+#pragma HLS PIPELINE II=2
+            for (int j = 0; j < 2; j++) {
+                data_entry |= ((snap_membus_t)(data_in[k*2+j])) << j*MEMDW/2;
+            }
+            data_out[k] = data_entry;
+            data_entry = 0;
+        }
+ }
+
 
 void collect_data(AXI_STREAM &din_eth,
 		eth_settings_t eth_settings,
@@ -220,6 +240,10 @@ static int process_action(snap_membus_t *din_gmem,
 		save_pedestal(dout_gmem, in_gain_pedestal_addr + 4 * NPIXEL * 2L / 64);
 		break;
 	}
+
+       // Save status - currently copy the whole HBM content
+       HBMbus_to_membus(d_hbm_p10,  dout_gmem + out_frame_status_addr + 64, 256*1024L*1024L/64);
+       HBMbus_to_membus(d_hbm_p11,  dout_gmem + out_frame_status_addr + 64 + 256*1024L*1024L/64, 256*1024L*1024L/64);
 
 	act_reg->Control.Retc = SNAP_RETC_SUCCESS;
 
