@@ -84,7 +84,7 @@ int main()
 
 	void *out_jf_header_buffer = mmap (NULL, out_jf_header_buffer_size, PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS| MAP_POPULATE, -1, 0);
 	if (out_jf_header_buffer == NULL) goto out_error;
-	memset(out_jf_header_buffer, 0x0, in_parameters_array_size);
+	memset(out_jf_header_buffer, 0x0, out_jf_header_buffer_size);
 
     mjob.expected_frames = frames;
     mjob.pedestalG0_frames = 0;
