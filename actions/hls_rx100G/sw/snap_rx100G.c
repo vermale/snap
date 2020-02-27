@@ -88,14 +88,14 @@ int main()
 
     mjob.expected_frames = frames;
     mjob.pedestalG0_frames = 0;
-    mjob.mode = MODE_CONV;
+    mjob.mode = MODE_RAW;
     mjob.fpga_mac_addr = 0xAABBCCDDEEF1;   // AA:BB:CC:DD:EE:F1
     mjob.fpga_ipv4_addr = 0x0A013205;      // 10.1.50.5
 
-    mjob.in_gain_pedestal_data_addr = in_parameters_array;
-    mjob.out_frame_buffer_addr = out_data_buffer;
-    mjob.out_status_buffer_addr = out_status_buffer;
-    mjob.out_jf_packet_headers_addr = out_jf_header_buffer;
+    mjob.in_gain_pedestal_data_addr = (uint64_t) in_parameters_array;
+    mjob.out_frame_buffer_addr = (uint64_t) out_data_buffer;
+    mjob.out_frame_status_addr = (uint64_t) out_status_buffer;
+    mjob.out_jf_packet_headers_addr = (uint64_t) out_jf_header_buffer;
 
 	int exit_code = EXIT_SUCCESS;
 
