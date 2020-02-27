@@ -74,7 +74,7 @@ d_hbm_p1[i] = tmp(511,256);
 		d_hbm_p8[i] = tmp(255,0);
 		d_hbm_p9[i] = tmp(511,256);
 	}
-	// p10 and p11 are used for statistics and need to be zeroed out
+	// p10 and p11 are used for statistics and need to be zeroed out at the beginning
 	for (size_t i = 0; i < NPIXEL * 2 / 64; i ++) {
 #pragma HLS PIPELINE
 		d_hbm_p10[i] = 0;
@@ -131,7 +131,6 @@ static void HBMbus_to_membus(snap_HBMbus_t *data_in, snap_membus_t *data_out,
         }
  }
 
-
 void collect_data(AXI_STREAM &din_eth,
 		eth_settings_t eth_settings,
 		snap_membus_t *dout_gmem,
@@ -142,7 +141,8 @@ void collect_data(AXI_STREAM &din_eth,
 		snap_HBMbus_t *d_hbm_p6, snap_HBMbus_t *d_hbm_p7,
 		snap_HBMbus_t *d_hbm_p8, snap_HBMbus_t *d_hbm_p9,
 		snap_HBMbus_t *d_hbm_p10, snap_HBMbus_t *d_hbm_p11,
-		ap_uint<8> mode) {
+		conversion_settings_t conversion_settings) {
+
 #pragma HLS DATAFLOW
 DATA_STREAM raw;
 DATA_STREAM converted;
@@ -155,7 +155,7 @@ convert_data(raw, converted,
 		d_hbm_p4, d_hbm_p5,
 		d_hbm_p6, d_hbm_p7,
 		d_hbm_p8, d_hbm_p9,
-		mode);
+		conversion_settings);
 write_data(converted, dout_gmem, out_frame_buffer_addr, out_frame_status_addr, d_hbm_p11);
 }
 
@@ -181,20 +181,26 @@ static int process_action(snap_membus_t *din_gmem,
 	// p4,p5 - gain G2
 	// p6,p7 - pedestal G1
 	// p8,p9 - pedestal G2
+	// p10   - JF packet headers
+	// p11   - frame counts
 
 	send_gratious_arp(dout_eth, act_reg->Data.fpga_mac_addr, act_reg->Data.fpga_ipv4_addr);
 
-	size_t in_gain_pedestal_addr = act_reg->Data.in_gain_pedestal_data.addr >> ADDR_RIGHT_SHIFT;
-	size_t out_frame_buffer_addr = act_reg->Data.out_frame_buffer.addr >> ADDR_RIGHT_SHIFT;
-	size_t out_frame_status_addr = act_reg->Data.out_frame_status.addr >> ADDR_RIGHT_SHIFT;
-
-	uint64_t bytes_written = 0;
+	size_t in_gain_pedestal_addr = act_reg->Data.in_gain_pedestal_data_addr >> ADDR_RIGHT_SHIFT;
+	size_t out_frame_buffer_addr = act_reg->Data.out_frame_buffer_addr >> ADDR_RIGHT_SHIFT;
+	size_t out_frame_status_addr = act_reg->Data.out_frame_status_addr >> ADDR_RIGHT_SHIFT;
+    size_t jf_packet_headers_addr = act_reg->Data.out_jf_packet_headers_addr >> ADDR_RIGHT_SHIFT;
 
 	eth_settings_t eth_settings;
 	eth_settings.fpga_mac_addr = act_reg->Data.fpga_mac_addr;
 	eth_settings.fpga_ipv4_addr = act_reg->Data.fpga_ipv4_addr;
-	eth_settings.frame_number_to_stop = act_reg->Data.packets_to_read;
-	eth_settings.frame_number_to_stop = act_reg->Data.packets_to_read + 5;
+	eth_settings.frame_number_to_stop = act_reg->Data.expected_frames;
+	eth_settings.frame_number_to_quit = act_reg->Data.expected_frames + 5;
+
+	conversion_settings_t conversion_settings;
+	conversion_settings.pedestalG0_frames = act_reg->Data.pedestalG0_frames;
+	conversion_settings.conversion_mode = act_reg->Data.mode;
+	conversion_settings.tracking_threshold = 0;
 
 	// Load constants
 	load_data_to_hbm(din_gmem, in_gain_pedestal_addr,
@@ -205,7 +211,8 @@ static int process_action(snap_membus_t *din_gmem,
 			d_hbm_p8, d_hbm_p9,
 			d_hbm_p10, d_hbm_p11);
 
-	switch (act_reg->Data.mode) {
+	// Load pedestal estimation into main memory
+	switch (conversion_settings.conversion_mode) {
 	case MODE_PEDEG0:
 	case MODE_CONV:
 		load_pedestal(din_gmem, in_gain_pedestal_addr + 5 * NPIXEL * 2L / 64);
@@ -218,6 +225,7 @@ static int process_action(snap_membus_t *din_gmem,
 		break;
 	}
 
+	// Run data collection
 	collect_data(din_eth, eth_settings, dout_gmem, out_frame_buffer_addr, out_frame_status_addr,
 			d_hbm_p0, d_hbm_p1,
 			d_hbm_p2, d_hbm_p3,
@@ -225,10 +233,10 @@ static int process_action(snap_membus_t *din_gmem,
 			d_hbm_p6, d_hbm_p7,
 			d_hbm_p8, d_hbm_p9,
 			d_hbm_p10, d_hbm_p11,
-			act_reg->Data.mode);
+			conversion_settings);
 
 	// Save calculated pedestal back to memory
-	switch (act_reg->Data.mode) {
+	switch (conversion_settings.conversion_mode) {
 	case MODE_PEDEG0:
 	case MODE_CONV:
 		save_pedestal(dout_gmem, in_gain_pedestal_addr + 5 * NPIXEL * 2L / 64);
@@ -241,9 +249,13 @@ static int process_action(snap_membus_t *din_gmem,
 		break;
 	}
 
-       // Save status - currently copy the whole HBM content
-       HBMbus_to_membus(d_hbm_p10,  dout_gmem + out_frame_status_addr + 64, 256*1024L*1024L/64);
-       HBMbus_to_membus(d_hbm_p11,  dout_gmem + out_frame_status_addr + 64 + 256*1024L*1024L/64, 256*1024L*1024L/64);
+	// Save JF packet headers
+	HBMbus_to_membus(d_hbm_p10,  dout_gmem + jf_packet_headers_addr,
+			(act_reg->Data.expected_frames*NMODULES)/2);
+
+	// Save JF status bits
+	HBMbus_to_membus(d_hbm_p11,  dout_gmem + out_frame_status_addr + 1,
+			(act_reg->Data.expected_frames*NMODULES*16)/64);
 
 	act_reg->Control.Retc = SNAP_RETC_SUCCESS;
 

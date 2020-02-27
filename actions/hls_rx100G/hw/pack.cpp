@@ -18,7 +18,7 @@
 
 void pack_pedeG0(packed_pedeG0_t& out, pedeG0_t in[32]) {
 	for (int i = 0; i < 32; i ++) {
-		for (int j = 0; j < PEDE_G0_PRECISION; j ++) out[i*20+j] = in[i][j];
+		for (int j = 0; j < PEDE_G0_PRECISION; j ++) out[i*PEDE_G0_PRECISION+j] = in[i][j];
 	}
 }
 
@@ -54,7 +54,7 @@ void pack_pedeG1G2(packed_pedeG0_t in, ap_uint<256> &out1, ap_uint<256> &out2) {
 void unpack_pedeG0(packed_pedeG0_t in, pedeG0_t out[32]) {
 #pragma HLS INLINE
 	for (int i = 0; i < 32; i ++) {
-		for (int j = 0; j < PEDE_G0_PRECISION; j ++) out[i][j] = in[i*20+j];
+		for (int j = 0; j < PEDE_G0_PRECISION; j ++) out[i][j] = in[i*PEDE_G0_PRECISION+j];
 	}
 }
 

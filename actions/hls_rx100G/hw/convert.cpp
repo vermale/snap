@@ -47,7 +47,7 @@ void convert_data(DATA_STREAM &in, DATA_STREAM &out,
 		snap_HBMbus_t *d_hbm_p4, snap_HBMbus_t *d_hbm_p5,
 		snap_HBMbus_t *d_hbm_p6, snap_HBMbus_t *d_hbm_p7,
 		snap_HBMbus_t *d_hbm_p8, snap_HBMbus_t *d_hbm_p9,
-		ap_uint<8> mode) {
+		conversion_settings_t conversion_settings) {
 
 	data_packet_t packet_in, packet_out;
 	in.read(packet_in);
@@ -81,22 +81,29 @@ void convert_data(DATA_STREAM &in, DATA_STREAM &out,
 			memcpy(packed_pedeG2_2,d_hbm_p9+offset, BURST_SIZE*32);
 
 			data_packet_t packet_buffer[BURST_SIZE];
-			for (int i = 0; i < BURST_SIZE; i ++) {
+
+			packet_buffer[0] = packet_in;
+
+			for (int i = 1; i < BURST_SIZE; i ++) {
 				in.read(packet_buffer[i]);
 			}
 			for (int i = 0; i < BURST_SIZE; i ++) {
 				ap_uint<512> tmp;
+				ap_uint<8> conversion_mode = conversion_settings.conversion_mode;
+				if ((conversion_mode == MODE_CONV) && (packet_in.frame_number < conversion_settings.pedestalG0_frames))
+					conversion_mode = MODE_PEDEG0;
 				convert_and_shuffle(packet_buffer[i].data, tmp, packed_pedeG0[offset+i],
 						packed_gainG0_1[i], packed_gainG0_2[i],
 						packed_pedeG1_1[i], packed_pedeG1_2[i], packed_gainG1_1[i], packed_gainG1_2[i],
-						packed_pedeG2_1[i], packed_pedeG1_2[i], packed_gainG2_1[i], packed_gainG2_2[i],
-						mode);
-				if (mode == MODE_CONV) packet_buffer[i].data = tmp;
+						packed_pedeG2_1[i], packed_pedeG2_2[i], packed_gainG2_1[i], packed_gainG2_2[i],
+						conversion_mode);
 
+				if (conversion_settings.conversion_mode == MODE_CONV) packet_buffer[i].data = tmp;
 			}
 			for (int i = 0; i < BURST_SIZE; i ++) {
 				out.write(packet_buffer[i]);
 			}
+			in.read(packet_in);
 		}
 		while ((packet_in.exit != 1) && (packet_in.axis_packet % BURST_SIZE != 0)) in.read(packet_in);
 	}
@@ -137,59 +144,59 @@ void convert_and_shuffle(ap_uint<512> data_in, ap_uint<512> &data_out,
 	unpack_gainG1G2(packed_gainG1_1, packed_gainG1_2, gainG1);
 	unpack_gainG1G2(packed_gainG2_1, packed_gainG2_2, gainG2);
 
-		Convert: for (int i = 0; i < 32; i++) {
+	Convert: for (int i = 0; i < 32; i++) {
 
-			if (in_val[i] == 0xffff) out_val[i] = 32766; // can saturate G2 - overload
-			else if (in_val[i] == 0xc000) out_val[i] = -32700; //cannot saturate G1
-			else {
-				ap_fixed<18,16, SC_RND_CONV> val_diff;
-				ap_fixed<18,16, SC_RND_CONV> val_result = 0;
-				ap_uint<2> gain = in_val[i] >>14;
-				ap_uint<14> adu = in_val[i]; // take first two bits
-				switch (gain) {
-				case 0: {
-					ap_ufixed<24,14, SC_RND_CONV> val_pede;
-					val_pede = pedeG0[i];
-					val_diff = adu - val_pede;
-					if (mode == MODE_PEDEG0) pedeG0[i] += ((pedeG0_signed_t) val_diff) / 128;
-					val_result = val_diff * (gainG0[i] / 512);
-					if (val_result >= 0)
-						out_val[i] = val_result + half;
-					else  out_val[i] = val_result - half;
-					break;
-				}
-				case 1: {
-					val_diff     = pedeG1[i] - adu;
-					if (mode == MODE_PEDEG1) {
-						pedeG0[i] += ((pedeG0_signed_t) val_diff) / -128;
-					}
+		if (in_val[i] == 0x3fff) out_val[i] = 32766; // can saturate G2 - overload
+		else if (in_val[i] == 0xffff) out_val[i] = -32700; //error
+		else if (in_val[i] == 0xc000) out_val[i] = -32700; //cannot saturate G1 - error
+		else {
+			ap_fixed<18,16, SC_RND_CONV> val_diff;
+			ap_fixed<18,16, SC_RND_CONV> val_result = 0;
+			ap_uint<2> gain = in_val[i] >>14;
+			ap_uint<14> adu = in_val[i]; // take first two bits
+			switch (gain) {
+			case 0: {
 
-					val_result   =  val_diff * gainG1[i];
-					if (val_result >= 0)
-						out_val[i] = val_result + half;
-					else  out_val[i] = val_result - half;
-					break;
-				}
-				case 2:
-					out_val[i] = -32700;
-					break;
-				case 3: {
-					val_diff     = pedeG2[i] - adu;
-					if (mode == MODE_PEDEG2) {
-						pedeG0[i] += ((pedeG0_signed_t) val_diff) / -128;
-					}
-
-					val_result   = val_diff * gainG2[i];
-					if (val_result >= 0)
-						out_val[i] = val_result + half;
-					else  out_val[i] = val_result - half;
-					break;
-				}
+				val_diff = adu - pedeG0[i];
+				if (mode == MODE_PEDEG0) pedeG0[i] += ((pedeG0_signed_t) val_diff) / 128;
+				val_result = val_diff * (gainG0[i] / 512);
+				if (val_result >= 0)
+					out_val[i] = val_result + half;
+				else  out_val[i] = val_result - half;
+				break;
+			}
+			case 1: {
+				val_diff     = pedeG1[i] - adu;
+				if (mode == MODE_PEDEG1) {
+					pedeG0[i] += ((pedeG0_signed_t) val_diff) / -128;
 				}
 
+				val_result   =  val_diff * gainG1[i];
+				if (val_result >= 0)
+					out_val[i] = val_result + half;
+				else  out_val[i] = val_result - half;
+				break;
+			}
+			case 2:
+				out_val[i] = -32700;
+				break;
+			case 3: {
+				val_diff     = pedeG2[i] - adu;
+				if (mode == MODE_PEDEG2) {
+					pedeG0[i] += ((pedeG0_signed_t) val_diff) / -128;
+				}
+
+				val_result   = val_diff * gainG2[i];
+				if (val_result >= 0)
+					out_val[i] = val_result + half;
+				else  out_val[i] = val_result - half;
+				break;
+			}
 			}
 		}
-		pack_pedeG0(packed_pedeG0, pedeG0);
-		data_shuffle(data_out, out_val);
+	}
+	pack_pedeG0(packed_pedeG0, pedeG0);
+	 data_shuffle(data_out, out_val);
+	//data_pack(data_out, out_val);
 }
 

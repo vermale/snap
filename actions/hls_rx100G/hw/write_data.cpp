@@ -16,8 +16,6 @@
 
 #include "hw_action_rx100G.h"
 
-#define STATUS_BUFFER_SIZE 4
-
 struct packet_counter_t {
 	uint64_t head;
 	ap_uint<8> counter[64];
@@ -29,16 +27,7 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 
 	int counter_ok = 0;
 	int counter_wrong = 0;
-/*
-	packet_counter_t packet_counter[STATUS_BUFFER_SIZE];
-	for (int i = 0; i < STATUS_BUFFER_SIZE; i++) {
-#pragma HLS UNROLL
-		packet_counter[i].head = i*64;
-		for (int j = 0; j < 64; j++) {
-			packet_counter[i].counter[j] = 0;
-		}
-	}
-*/
+
 	uint64_t head[NMODULES]; // number of the newest packet received for the frame
 #pragma HLS RESOURCE variable=head core=RAM_1P_LUTRAM
 	for (int i = 0; i < NMODULES; i++) {
@@ -47,15 +36,15 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 	}
 
 	while (packet_in.exit == 0) {
+
 		Loop_good_packet: while ((packet_in.exit == 0) && (packet_in.axis_packet == 0)) {
+
 			// TODO: accounting which packets were converted
 #pragma HLS PIPELINE II=129
 			size_t out_frame_addr = out_frame_buffer_addr +
 					       (packet_in.frame_number % FRAME_BUF_SIZE) * (NMODULES * MODULE_COLS * MODULE_LINES / 32) +
 							packet_in.module * (MODULE_COLS * MODULE_LINES/32) +
 							packet_in.eth_packet * (4096/32);
-
-			bool frame_ok = true;
 
 			ap_uint<512> buffer[128];
 
@@ -73,60 +62,50 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 				//	if (head[i] >= packet_in.frame_number) is_head = false;
 
 				head[packet_in.module] = packet_in.frame_number;
-				ap_uint<512> statistics;
-			    statistics(31,0) = counter_ok;
+				ap_uint<512> statistics = 0;
+
+				statistics(31,0) = counter_ok;
 				statistics(63,32) = counter_wrong;
-				statistics(127,64) = packet_in.frame_number;
+
 				for (int i = 0; i < NMODULES; i++) {
-					statistics(128 + i * 64 + 63, 128 + i * 64) = head[i];
+					statistics(64 + i * 64 + 63, 64 + i * 64) = head[i];
 				}
-				memcpy(dout_gmem+out_frame_status_addr, (char *) &statistics, BPERDW);
+
+				memcpy(dout_gmem+out_frame_status_addr, &statistics, BPERDW);
 			}
 
 			ap_uint<1> last_axis_user;
 
-			for (int i = 0; i < 128; i++) {
-				if (i == 127) last_axis_user = packet_in.axis_user; // relevant for the last packet
-				buffer[i] = packet_in.data;
+			buffer[0] = packet_in.data;
+			for (int i = 1; i < 128; i++) {
 				in.read(packet_in);
+				buffer[i] = packet_in.data;
 			}
 
-			memcpy(dout_gmem + out_frame_addr+64, buffer, 128*64);
-			/*
-			// If this is first frame with this number AND It starts new 64
-			if ((is_head) && ((frame_number0 * NMODULES) % 64 == 0)) {
-				// Save data from old counter, before new buffer can be filled
-				// But - if this is first time buffer is filled, there is no data to be saved
-				if (packet_counter[packet_counter_addr/64].head != frame_number0) {
-					ap_uint<512> tmp;
-					for (int i = 0; i < 512; i++) tmp[i] = packet_counter[packet_counter_addr/64].counter[i/8][i%8];
-					memcpy(dout_gmem + out_frame_status_addr + 1 + ((packet_counter[packet_counter_addr/64].head * NMODULES)/ 64), &tmp, 64);
-					packet_counter[packet_counter_addr/64].head = frame_number0;
-				}
-				// Start a new packet counter
-				for (int i = 0; i < 64; i++) packet_counter[packet_counter_addr/64].counter[i] = 0;
-			} */
-			if (((packet_in.axis_packet == 0) || (packet_in.exit == 1))  && (last_axis_user == 0)) {
+			memcpy(dout_gmem + out_frame_addr, buffer, 128*64);
+
+			if ((packet_in.axis_packet == 127) && (packet_in.axis_user == 0)) {
 				counter_ok++;
-				size_t hbm_addr = packet_in.frame_number * 128 * NMODULES + packet_in.module * 128 + packet_in.eth_packet;
-				ap_uint<256> tmp = d_hbm_stat[hbm_addr / 256];
-				tmp[hbm_addr%256] = 1;
-				d_hbm_stat[hbm_addr / 256] = tmp;
-				//packet_counter[packet_counter_addr / 64].counter[packet_counter_addr % 64]++;
+				ap_uint<36> bit_addr = packet_in.frame_number * 128 * NMODULES + packet_in.module * 128 + packet_in.eth_packet;
+				ap_uint<256> tmp = d_hbm_stat[bit_addr / 256];
+				tmp[bit_addr%256] = 1;
+				d_hbm_stat[bit_addr / 256] = tmp;
 			} else counter_wrong++;
-		}
-		Loop_err_packet: while ((packet_in.exit == 0) && (packet_in.axis_packet != 0)) {
-			// forward, to get to a beginning of a meaningful packet.
+
 			in.read(packet_in);
 		}
+		// forward, to get to a beginning of a meaningful packet:
+		Loop_err_packet: while ((packet_in.exit == 0) && (packet_in.axis_packet != 0))
+			in.read(packet_in);
 	}
-/*
-	for (int i = 0; i < STATUS_BUFFER_SIZE; i++) {
-#pragma HLS UNROLL
-		ap_uint<512> tmp;
-		for (int j = 0; j < 512; j++) tmp[j] = packet_counter[i].counter[j/8][j%8];
-		memcpy(dout_gmem + out_frame_status_addr + 1 + (packet_counter[i].head * NMODULES / 64), &tmp, 64);
+	ap_uint<512> statistics = 0;
+
+	statistics(31,0) = counter_ok;
+	statistics(63,32) = counter_wrong;
+
+	for (int i = 0; i < NMODULES; i++) {
+		statistics(64 + i * 64 + 63, 64 + i * 64) = head[i];
 	}
-*/
+	memcpy(dout_gmem+out_frame_status_addr, &statistics, BPERDW);
 
 }

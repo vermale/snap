@@ -154,22 +154,18 @@ void read_eth_packet(AXI_STREAM &in, DATA_STREAM &out, eth_settings_t eth_settin
 			decode_eth_1(packet_in.data, header);
 			// UDP port is not checked - should it be as well?
 			if ((header.dest_mac == eth_settings.fpga_mac_addr) && // MAC address
-					(header.ether_type == 0x0800) && // IP
-//					(header.ip_version == 4) && // IPv4
-					(header.ipv4_protocol == 0x11) && // UDP
+					(header.ether_type == 0x0800) &&  // Ether_type = IP
+					(header.ip_version == 4) &&       // Protocol = IPv4
 					(header.ipv4_dest_ip == eth_settings.fpga_ipv4_addr) && // IP address is correct
+					(header.ipv4_protocol == 0x11) && // UDP
 					(header.ipv4_total_len == 8268)) {
 				// Frame number counts from 0 (it is shifted by one vs. JUNGFRAU header info
-				if (header.jf_frame_number < eth_settings.frame_number_to_stop) {
+				// Quit if frame number reported is >= frame_number_to_quit
+				if (header.jf_frame_number >= eth_settings.frame_number_to_quit) packet_out.exit = 1;
+				else if (header.jf_frame_number < eth_settings.frame_number_to_stop) {
 				   axis_packet = 0;
-				   if (header.jf_packet_number == 0) {
-					   size_t hbm_addr = header.jf_frame_number * NMODULES + (header.udp_dest_port % NMODULES);
-					   d_hbm_header[2*hbm_addr] = packet_in.data(511,256);
-				   }
 				   rcv_state = RCV_JF_HEADER;
-				} else if (header.jf_frame_number < eth_settings.frame_number_to_quit)
-					rcv_state = RCV_IGNORE;
-				else packet_out.exit = 1; // Quit if frame number reported is >= frame_number_to_quit
+				} else rcv_state = RCV_IGNORE;
 			}
 			else rcv_state = RCV_IGNORE;
 			break;
@@ -179,13 +175,26 @@ void read_eth_packet(AXI_STREAM &in, DATA_STREAM &out, eth_settings_t eth_settin
 			packet_out.eth_packet = header.jf_packet_number;
 			packet_out.module = header.udp_dest_port % NMODULES;
 			packet_out.trigger = header.jf_debug[31];
+
+			// First AXI-stream packet contains only 303-bits of frame payload, so there is a need to align
 			packet_out.data(303,0) = packet_in.data(511, 208);
+
+			// For 0th package, part of JF header is saved
 			if (header.jf_packet_number == 0) {
-				size_t hbm_addr = header.jf_frame_number * NMODULES + (header.udp_dest_port % NMODULES);
-				d_hbm_header[2*hbm_addr+1] = packet_in.data(255,0);
+				ap_uint<28> hbm_addr = header.jf_frame_number * NMODULES + (packet_out.module);
+				ap_uint<256> save_to_memory;
+				save_to_memory(63,0)    = header.jf_frame_number;
+				save_to_memory(79,64)   = header.udp_src_port;
+				save_to_memory(95,80)   = header.udp_dest_port;
+				save_to_memory(127,96)  = header.jf_debug;
+				save_to_memory(191,128) = header.jf_timestamp;
+				save_to_memory(255,192) = header.jf_bunch_id;
+				d_hbm_header[hbm_addr] = save_to_memory;
 			}
+
 			rcv_state = RCV_GOOD;
 			break;
+
 		case RCV_GOOD:
 			packet_out.axis_packet = axis_packet;
 			packet_out.data(511,304) = packet_in.data(207, 0);
@@ -195,11 +204,13 @@ void read_eth_packet(AXI_STREAM &in, DATA_STREAM &out, eth_settings_t eth_settin
 			axis_packet++;
 			if (axis_packet == 128) rcv_state = RCV_IGNORE;
 			break;
+
 		case RCV_IGNORE:
 			break;
 		}
 		if (packet_in.last == 1) rcv_state = RCV_INIT;
 	}
-
-	out.write(packet_out); // Inform writer, that all is finished
+	// The outer loop is finished only if packet_out.exit was set to one
+	// In this case a last packet is sent to inform later steps of the pipeline to quit.
+	out.write(packet_out);
 }

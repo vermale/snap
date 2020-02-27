@@ -51,6 +51,10 @@ int main()
 	struct snap_job cjob;
 	struct rx100G_job mjob;
 
+	// Number of frames
+	uint64_t frames = NFRAMES;
+
+	// Time out
 	unsigned long timeout = 600;
 	struct timeval etime, stime;
 
@@ -60,38 +64,38 @@ int main()
 	memset(&mjob, 0, sizeof(mjob));
 
     uint64_t out_data_buffer_size = FRAME_BUF_SIZE * NPIXEL * 2; // can store FRAME_BUF_SIZE frames
-    uint64_t out_status_buffer_size = (FRAME_STATUS_BUF_SIZE+1)*64;           // can store FRAME_STATUS_BUF_SIZE frames
+    uint64_t out_status_buffer_size = frames*NMODULES*128/8+64; // can store 1 bit per each ETH packet expected
     uint64_t in_parameters_array_size = (6 * NPIXEL * 2); // each entry to in_parameters_array is 2 bytes and there are 6 constants per pixel
+    uint64_t out_jf_header_buffer_size = frames*NMODULES*32;
 
     // Arrays are allocated with mmap for the higest possible performance. Output is page aligned, so it will be also 64b aligned.
 
     void *out_data_buffer  = mmap (NULL, out_data_buffer_size, PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS| MAP_POPULATE, -1, 0) ;
     if (out_data_buffer == NULL) goto out_error;
+    memset(out_data_buffer, 0x0, out_data_buffer_size);
 
     void *out_status_buffer = mmap (NULL, out_status_buffer_size, PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS| MAP_POPULATE, -1, 0);
     if (out_status_buffer == NULL) goto out_error;
+    memset(out_status_buffer, 0x0, out_status_buffer_size);
 
     void *in_parameters_array = mmap (NULL, in_parameters_array_size, PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS| MAP_POPULATE, -1, 0);
     if (in_parameters_array == NULL) goto out_error;
-
-	memset(out_data_buffer, 0x0, out_data_buffer_size);
-	memset(out_status_buffer, 0x0, out_status_buffer_size);
 	memset(in_parameters_array, 0x0, in_parameters_array_size);
 
-    mjob.packets_to_read = NFRAMES*NMODULES*128;
+	void *out_jf_header_buffer = mmap (NULL, out_jf_header_buffer_size, PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS| MAP_POPULATE, -1, 0);
+	if (out_jf_header_buffer == NULL) goto out_error;
+	memset(out_jf_header_buffer, 0x0, in_parameters_array_size);
+
+    mjob.expected_frames = frames;
+    mjob.pedestalG0_frames = 0;
+    mjob.mode = MODE_CONV;
     mjob.fpga_mac_addr = 0xAABBCCDDEEF1;   // AA:BB:CC:DD:EE:F1
     mjob.fpga_ipv4_addr = 0x0A013205;      // 10.1.50.5
 
-    // Setting input parameters:
-    snap_addr_set(&mjob.in_gain_pedestal_data, in_parameters_array, in_parameters_array_size, SNAP_ADDRTYPE_HOST_DRAM,
-    		SNAP_ADDRFLAG_ADDR | SNAP_ADDRFLAG_SRC);
-
-    // Setting output parameters:
-    snap_addr_set(&mjob.out_frame_buffer, out_data_buffer, out_data_buffer_size, SNAP_ADDRTYPE_HOST_DRAM,
-    		SNAP_ADDRFLAG_ADDR | SNAP_ADDRFLAG_DST);
-
-    snap_addr_set(&mjob.out_frame_status, out_status_buffer, out_status_buffer_size, SNAP_ADDRTYPE_HOST_DRAM,
-    		SNAP_ADDRFLAG_ADDR | SNAP_ADDRFLAG_DST | SNAP_ADDRFLAG_END);
+    mjob.in_gain_pedestal_data_addr = in_parameters_array;
+    mjob.out_frame_buffer_addr = out_data_buffer;
+    mjob.out_status_buffer_addr = out_status_buffer;
+    mjob.out_jf_packet_headers_addr = out_jf_header_buffer;
 
 	int exit_code = EXIT_SUCCESS;
 
@@ -140,11 +144,10 @@ int main()
 			strerror(errno));
 		goto out_error2;
 	}
+
     __hexdump(stdout, out_data_buffer, 130*64);
     __hexdump(stdout, out_status_buffer, 8192);
-
-	printf(" Good packets %ld\n", mjob.good_packets);
-	printf(" Bad packets %ld\n", mjob.bad_packets);
+    __hexdump(stdout, out_jf_header_buffer, 8192);
 
 	// test return code
 	(cjob.retc == SNAP_RETC_SUCCESS) ? fprintf(stdout, "SUCCESS\n") : fprintf(stdout, "FAILED\n");
@@ -161,10 +164,13 @@ int main()
 	snap_detach_action(action);
 	snap_card_free(card);
 
+
 	// Memory deallocation
 	munmap(out_data_buffer, out_data_buffer_size);
 	munmap(out_status_buffer, out_status_buffer_size);
 	munmap(in_parameters_array, in_parameters_array_size);
+	munmap(out_jf_header_buffer, out_jf_header_buffer_size);
+
 	exit(exit_code);
 
  out_error2:

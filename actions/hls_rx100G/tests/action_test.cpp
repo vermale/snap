@@ -4,8 +4,17 @@
 #include "action_test.h"
 #include "snap_hls_if.h"
 
-#define NFRAMES 256
+#define NFRAMES 10
 #define MODULE 0
+
+struct frame_header_t {
+	uint64_t frame_number;
+	uint16_t udp_src_port;
+	uint16_t udp_dest_port;
+	uint32_t jf_debug;
+	uint64_t jf_timestamp;
+	uint64_t jf_bunchid;
+};
 
 void hls_action(snap_membus_t *din_gmem, snap_membus_t *dout_gmem,
 		snap_HBMbus_t *d_hbm_p0, snap_HBMbus_t *d_hbm_p1,
@@ -69,10 +78,12 @@ void make_packet(AXI_STREAM &din_eth, uint64_t frame_number, uint32_t eth_packet
 	packet->dest_mac[4] = 0xEE;
 	packet->dest_mac[5] = 0xF1;
 	packet->ipv4_header_h = 0x45; // Big endian in IP header!
-    packet->ipv4_header_total_length = 0x4C20; // Big endian in IP header!
+        packet->ipv4_header_total_length = 0x4C20; // Big endian in IP header!
 	packet->ipv4_header_dest_ip = 0x0532010A; // Big endian in IP header!
 	packet->ipv4_header_ttl_protocol = 0x1100;
-	packet->udp_dest_port = MODULE * 0x0100; // module number
+	packet->udp_dest_port = MODULE + 0xC0CC; // module number
+	packet->udp_sour_port = 0xACDF;
+	packet->timestamp = 0xA0A0A0A0;
 	packet->framenum = frame_number;
 	packet->packetnum = eth_packet;
 
@@ -92,6 +103,58 @@ void make_packet(AXI_STREAM &din_eth, uint64_t frame_number, uint32_t eth_packet
 
 }
 
+inline void loadBinFile(std::string name, char *dest, size_t size) {
+	printf("Loading %s\n", name.c_str());
+	std::fstream file10 = std::fstream(name.c_str(), std::ios::in | std::ios::binary);
+	if (!file10.is_open()) {
+		printf ("Error opening file %s\n",name.c_str());
+	} else {
+		file10.read(dest, size);
+		file10.close();
+	}
+}
+
+void load_gain(void *in_gain, std::string fname, int module, double energy_in_keV) {
+	double *tmp_gain = (double *) calloc (3 * MODULE_COLS * MODULE_LINES, sizeof(double));
+	std::fstream infile;
+
+	loadBinFile(fname, (char *) tmp_gain, 3 * MODULE_COLS * MODULE_LINES * sizeof(double));
+
+	gainG0_t   *in_gain_in_G0   = (gainG0_t *)   in_gain;
+	gainG1G2_t *in_gain_in_G1G2 = (gainG1G2_t *) in_gain;
+	size_t offset = module * MODULE_COLS * MODULE_LINES;
+
+	for (int i = 0; i < MODULE_COLS * MODULE_LINES; i ++) {
+		in_gain_in_G0[offset+i] =  (gainG0_t) (512.0 / ( tmp_gain[i] * energy_in_keV));
+	}
+
+	offset += NPIXEL;
+	for (int i = 0; i < MODULE_COLS * MODULE_LINES; i ++) {
+		in_gain_in_G1G2[offset+i] =  (gainG1G2_t) (-1.0 / ( tmp_gain[i + MODULE_COLS * MODULE_LINES] * energy_in_keV));
+	}
+
+	offset += NPIXEL;
+	for (int i = 0; i < MODULE_COLS * MODULE_LINES; i ++) {
+		in_gain_in_G1G2[offset+i] =  (gainG1G2_t) (-1.0 / ( tmp_gain[i + 2 * MODULE_COLS * MODULE_LINES] * energy_in_keV));
+	}
+
+	free(tmp_gain);
+}
+
+void load_pedestal(void *in_gain, std::string fname, int module, int array_offset) {
+	float *tmp_pede = (float *) calloc (MODULE_COLS * MODULE_LINES, sizeof(float));
+
+	loadBinFile(fname, (char *)  tmp_pede, MODULE_COLS * MODULE_LINES * sizeof(float));
+
+	pedeG1G2_t *in_gain_inpede = (pedeG1G2_t *) in_gain;
+	size_t offset = module * MODULE_COLS * MODULE_LINES + array_offset * NPIXEL;
+
+	for (int i = 0; i < MODULE_COLS * MODULE_LINES; i ++) {
+		in_gain_inpede[offset+i] =  tmp_pede[i];
+
+	}
+	free(tmp_pede);
+}
 
 int main(int argc, char *argv[]) {
 	int retval = 0;
@@ -113,38 +176,53 @@ int main(int argc, char *argv[]) {
 	snap_HBMbus_t *d_hbm_p11 = (snap_HBMbus_t *) calloc(1024*1024*256, 1);
 
 
-    void* in_gain = snap_malloc(6*(NMODULES * 512 * 1024)*sizeof(uint16_t));
-	uint16_t *out_frame_buffer = (uint16_t *) snap_malloc(FRAME_BUF_SIZE*NMODULES*MODULE_COLS*MODULE_LINES*sizeof(uint16_t));
-	uint8_t *out_frame_buffer_status = (uint8_t *) snap_malloc((NMODULES*100000+64)*sizeof(uint8_t));
+    void* in_gain = snap_malloc(6*(NPIXEL)*sizeof(uint16_t));
+    memset(in_gain, 0x0, 6*(NPIXEL)*sizeof(uint16_t));
 
-	for (int i = 0; i < 100000; i++)
-			for (int j = 0; j < NMODULES; j++)
-				out_frame_buffer_status[i*NMODULES+j] = 0;
+    int16_t *out_frame_buffer = (int16_t *) snap_malloc(FRAME_BUF_SIZE*NPIXEL*sizeof(uint16_t));
+    memset(out_frame_buffer, 0x0, FRAME_BUF_SIZE*NPIXEL*sizeof(uint16_t));
+
+    uint8_t  *out_frame_buffer_status = (uint8_t *) snap_malloc(NFRAMES*NMODULES*128/8+64); 
+    memset(out_frame_buffer_status, 0x0, NFRAMES*NMODULES*128/8+64);
+
+	frame_header_t* jf_frame_headers = (frame_header_t *)  snap_malloc(NFRAMES*NMODULES*sizeof(frame_header_t));
+    memset(jf_frame_headers,0x0, NFRAMES*NMODULES*sizeof(frame_header_t));
+
+    load_gain(in_gain, "test_data/gainMaps_M049.bin", MODULE, 12.4);
+
+    load_pedestal(in_gain, "test_data/mod5_pedeG1.bin", MODULE, 3);
+    load_pedestal(in_gain, "test_data/mod5_pedeG2.bin", MODULE, 4);
+    load_pedestal(in_gain, "test_data/mod5_pedeG0.bin", MODULE, 5);
+
 	AXI_STREAM din_eth;
 	AXI_STREAM dout_eth;
 
 	action_reg action_register;
 	action_RO_config_reg Action_Config;
 
-	action_register.Data.packets_to_read = NFRAMES * 128L;
-	action_register.Data.mode = MODE_RAW;
+	action_register.Data.expected_frames = NFRAMES;
+	action_register.Data.mode = MODE_CONV;
 	action_register.Control.flags = 1;
 	action_register.Data.fpga_mac_addr = 0xAABBCCDDEEF1;
 	action_register.Data.fpga_ipv4_addr = 0x0A013205; // 10.1.50.5
-	action_register.Data.in_gain_pedestal_data.addr = (uint64_t) in_gain;
-	action_register.Data.out_frame_buffer.addr = (uint64_t) out_frame_buffer;
-	action_register.Data.out_frame_status.addr = (uint64_t) out_frame_buffer_status;
+	action_register.Data.in_gain_pedestal_data_addr = (uint64_t) in_gain;
+	action_register.Data.out_frame_buffer_addr = (uint64_t) out_frame_buffer;
+	action_register.Data.out_frame_status_addr = (uint64_t) out_frame_buffer_status;
+	action_register.Data.out_jf_packet_headers_addr = (uint64_t) jf_frame_headers;
+	action_register.Data.pedestalG0_frames = 0;
 
-	uint16_t *frame = (uint16_t *) calloc(NCH * NFRAMES, sizeof(uint16_t));
-
-	JungfrauFile file("/mnt/zfs/e16371/20181004/NA102I_Lyso5/NA102I_Lyso5_12p4_100dps_tr1p0_720_1_d4_f000000000000_0.raw", 0);
+	uint16_t *frame = (uint16_t *) calloc(MODULE_LINES * MODULE_COLS * NFRAMES, sizeof(uint16_t));
+	int16_t *frame_converted = (int16_t *) calloc(MODULE_LINES * MODULE_COLS * NFRAMES, sizeof(uint16_t));
 
 	for (int i = 0; i < NFRAMES; i++) {
-		file.ReadFrame(frame + NCH * i, 0);
+		loadBinFile("test_data/mod5_raw" + std::to_string(i) + ".bin", (char *)  (frame + NCH * i), MODULE_LINES * MODULE_COLS * sizeof(uint16_t));
+		loadBinFile("test_data/mod5_conv" + std::to_string(i) + ".bin", (char *)  (frame_converted + NCH * i), MODULE_LINES * MODULE_COLS * sizeof(uint16_t));
 		for (int j = 0; j < 128; j++) {
 			make_packet(din_eth, i+1, j, frame + NCH * i + 4096 * j);
 		}
 	}
+
+	make_packet(din_eth, NFRAMES+100, 0, frame);
 
     hls_action(din_gmem, dout_gmem, d_hbm_p0, d_hbm_p1, d_hbm_p2, d_hbm_p3, d_hbm_p4, d_hbm_p5,
     		d_hbm_p6, d_hbm_p7, d_hbm_p8, d_hbm_p9, d_hbm_p10, d_hbm_p11,
@@ -154,25 +232,37 @@ int main(int argc, char *argv[]) {
 
 	dout_eth.read(packet_out);
 
-	for (int i = 0; i < 100000; i++) {
-		for (int j = 0; j < NMODULES; j++) {
-			// if (out_frame_buffer_status[i*NMODULES+j+64] != 0) printf("%d %d %d \n",i,j, out_frame_buffer_status[i*NMODULES+j+64]);
-			if ((i < NFRAMES ) && (j == MODULE) && (out_frame_buffer_status[i*NMODULES+j+64] != 128)) {
-				printf("Status missing for %d %d\n",i,j,out_frame_buffer_status[i*NMODULES+j+64]);
-				retval = 1;
-			}
-			if (((i >= NFRAMES) || (j != MODULE)) && (out_frame_buffer_status[i*NMODULES+j+64] != 0)) {
-				printf("Status wrong for %d %d\n",i,j,out_frame_buffer_status[i*NMODULES+j+64]);
-				retval = 1;
-			}
-		}
-	}
+	int16_t *out_frame_buffer_unshuf = (int16_t *) snap_malloc(FRAME_BUF_SIZE*NPIXEL*sizeof(uint16_t));
 
-	for (int i = 0; i < NFRAMES; i++) {
-		for (int j = 0; j < NCH; j++) {
-			if (frame[i*NCH+j] != out_frame_buffer[i*2*NCH+j+MODULE*NCH]) retval = 2;
+
+	//bshuf_bitunshuffle(out_frame_buffer, out_frame_buffer_unshuf, FRAME_BUF_SIZE*NPIXEL*sizeof(uint16_t),
+	//        2, FRAME_BUF_SIZE*NPIXEL*sizeof(uint16_t));
+
+	if (action_register.Data.mode == MODE_CONV) {
+		double mean_error;
+		for (int i = 0; i < NFRAMES; i++) {
+					for (int j = 0; j < NCH; j++) {
+						mean_error += frame_converted[i*NCH+j] - out_frame_buffer_unshuf[i*NMODULES*NCH+j+MODULE*NCH];
+					}
+		}
+		mean_error /= NFRAMES*NCH;
+		std::cout << "Mean error " << mean_error << std::endl;
+		if (mean_error > 0.33) retval = 2;
+	} else {
+		for (int i = 0; i < NFRAMES; i++) {
+			for (int j = 0; j < NCH; j++) {
+				if (frame[i*NCH+j] != out_frame_buffer[i*NMODULES*NCH+j+MODULE*NCH])  retval = 2;
+			}
 		}
 	}
+	__hexdump(stdout, out_frame_buffer_unshuf, 64*64);
+	__hexdump(stdout, frame_converted, 64*64);
+
+	__hexdump(stdout, jf_frame_headers, NFRAMES*NMODULES*sizeof(frame_header_t));
+	__hexdump(stdout, d_hbm_p10, NFRAMES*NMODULES*sizeof(frame_header_t));
+
+	__hexdump(stdout, out_frame_buffer_status, NFRAMES*NMODULES*128/8+64);
+	__hexdump(stdout, d_hbm_p11, NFRAMES*NMODULES*128/8+64);
 
 	free(d_hbm_p0);
 	free(d_hbm_p1);
@@ -180,11 +270,15 @@ int main(int argc, char *argv[]) {
 	free(d_hbm_p3);
 	free(d_hbm_p4);
 	free(d_hbm_p5);
-	free(frame);
+	free(d_hbm_p6);
+	free(d_hbm_p7);
+	free(d_hbm_p8);
+	free(d_hbm_p9);
+	free(d_hbm_p10);
+	free(d_hbm_p11);
 
-    __hexdump(stdout, out_frame_buffer_status, 64);
-	printf("Good packets %d\n",action_register.Data.good_packets);
-	printf("Bad packets %d\n",action_register.Data.bad_packets);
+	free(frame);
+	free(frame_converted);
 
 	return retval;
 }

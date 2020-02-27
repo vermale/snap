@@ -33,6 +33,18 @@
 #define RELEASE_LEVEL		0x00000003
 
 typedef char word_t[BPERDW];
+
+typedef ap_ufixed<PEDE_G0_PRECISION,14, SC_RND_CONV> pedeG0_t;
+typedef ap_fixed<PEDE_G0_PRECISION+1,14, SC_RND_CONV> pedeG0_signed_t;
+
+typedef ap_ufixed<16,2, SC_RND_CONV>  gainG0_t;
+typedef ap_ufixed<16,12, SC_RND_CONV> pedeG0RMS_t;
+
+typedef ap_ufixed<16,14, SC_RND_CONV> pedeG1G2_t;
+typedef ap_ufixed<16,3, SC_RND_CONV>  gainG1G2_t;
+
+typedef ap_uint<PEDE_G0_PRECISION*32> packed_pedeG0_t;
+
 //---------------------------------------------------------------------
 // This is generic. Just adapt names for a new action
 // CONTROL is defined and handled by SNAP 
@@ -51,6 +63,21 @@ struct ap_axiu_for_eth {
 	ap_uint<1>       last;
 };
 
+typedef hls::stream<ap_axiu_for_eth> AXI_STREAM;
+
+struct data_packet_t {
+	ap_uint<512> data;
+	ap_uint<64> frame_number; //
+	ap_uint<4> module; // 0..16
+	ap_uint<8> eth_packet; // 0..128
+	ap_uint<8> axis_packet; // 0..128
+    ap_uint<1> axis_user; // TUSER from AXIS
+	ap_uint<1> exit; // exit
+	ap_uint<1> trigger; // debug flag on
+};
+
+typedef hls::stream<data_packet_t> DATA_STREAM;
+
 struct eth_settings_t {
 	uint64_t frame_number_to_stop;
 	uint64_t frame_number_to_quit;
@@ -59,21 +86,10 @@ struct eth_settings_t {
 	uint32_t fpga_udp_port;
 };
 
-struct eth_stat_t {
-	uint64_t good_packets;
-	uint64_t bad_packets;
-	uint64_t ignored_packets;
-};
-
-struct data_packet_t {
-	ap_uint<512> data;
-	ap_uint<64> frame_number; //
-	ap_uint<4> module; // 0..16
-	ap_uint<8> eth_packet; // 0..128
-	ap_uint<8> axis_packet; // 0..128
-        ap_uint<1> axis_user; // TUSER from AXIS
-	ap_uint<1> exit; // exit
-	ap_uint<1> trigger; // debug flag on
+struct conversion_settings_t {
+	ap_uint<8> conversion_mode;
+	ap_uint<64> pedestalG0_frames;
+	pedeG0_t    tracking_threshold;
 };
 
 struct packet_header_t {
@@ -109,20 +125,6 @@ struct packet_header_t {
 	ap_uint<8> jf_header_version_type;
 };
 
-typedef ap_ufixed<PEDE_G0_PRECISION,14, SC_RND_CONV> pedeG0_t;
-typedef ap_fixed<PEDE_G0_PRECISION+1,14, SC_RND_CONV> pedeG0_signed_t;
-
-typedef ap_ufixed<16,2, SC_RND_CONV>  gainG0_t;
-typedef ap_ufixed<16,12, SC_RND_CONV> pedeG0RMS_t;
-
-typedef ap_ufixed<16,14, SC_RND_CONV> pedeG1G2_t;
-typedef ap_ufixed<16,3, SC_RND_CONV>  gainG1G2_t;
-
-typedef ap_uint<PEDE_G0_PRECISION*32> packed_pedeG0_t;
-
-typedef hls::stream<ap_axiu_for_eth> AXI_STREAM;
-typedef hls::stream<data_packet_t> DATA_STREAM;
-
 void decode_eth_1(ap_uint<512> val_in, packet_header_t &header_out);
 void decode_eth_2(ap_uint<512> val_in, packet_header_t &header_out);
 
@@ -157,7 +159,7 @@ void convert_data(DATA_STREAM &in, DATA_STREAM &out,
 		snap_HBMbus_t *d_hbm_p4, snap_HBMbus_t *d_hbm_p5,
 		snap_HBMbus_t *d_hbm_p6, snap_HBMbus_t *d_hbm_p7,
 		snap_HBMbus_t *d_hbm_p8, snap_HBMbus_t *d_hbm_p9,
-		ap_uint<8> mode);
+		conversion_settings_t conversion_settings);
 
 
 void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem,
