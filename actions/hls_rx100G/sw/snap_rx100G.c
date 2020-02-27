@@ -146,8 +146,8 @@ int main()
 	}
 
     __hexdump(stdout, out_data_buffer, 130*64);
-    __hexdump(stdout, out_status_buffer, 8192);
-    __hexdump(stdout, out_jf_header_buffer, 8192);
+    __hexdump(stdout, out_status_buffer, out_status_buffer_size);
+    __hexdump(stdout, out_jf_header_buffer, out_jf_header_buffer_size);
 
 	// test return code
 	(cjob.retc == SNAP_RETC_SUCCESS) ? fprintf(stdout, "SUCCESS\n") : fprintf(stdout, "FAILED\n");
