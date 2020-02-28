@@ -39,7 +39,7 @@ void pedestal_update(ap_uint<512> data_in, packed_pedeG0_t& packed_pede, ap_uint
 	pack_pedeG0(packed_pede, pedestal);
 }
 
-#define BURST_SIZE 8
+#define BURST_SIZE 16
 
 void convert_data(DATA_STREAM &in, DATA_STREAM &out,
 		snap_HBMbus_t *d_hbm_p0, snap_HBMbus_t *d_hbm_p1,
@@ -54,7 +54,7 @@ void convert_data(DATA_STREAM &in, DATA_STREAM &out,
 
 	while (packet_in.exit != 1) {
 		Convert_and_forward: while ((packet_in.exit != 1) && (packet_in.axis_packet % BURST_SIZE == 0)) {
-#pragma HLS pipeline II = 8
+#pragma HLS pipeline II = 16
 			size_t offset = packet_in.module * 128 * 128 + 128 * packet_in.eth_packet + packet_in.axis_packet;
 			// HBM Order:
 			// p0,p1 - gain G0
@@ -80,30 +80,33 @@ void convert_data(DATA_STREAM &in, DATA_STREAM &out,
 			memcpy(packed_pedeG2_1,d_hbm_p8+offset, BURST_SIZE*32);
 			memcpy(packed_pedeG2_2,d_hbm_p9+offset, BURST_SIZE*32);
 
-			data_packet_t packet_buffer[BURST_SIZE];
 
-			packet_buffer[0] = packet_in;
+			for (int z = 0; z < BURST_SIZE/8; z++) {
+				data_packet_t packet_buffer[8];
 
-			for (int i = 1; i < BURST_SIZE; i ++) {
-				in.read(packet_buffer[i]);
-			}
-			for (int i = 0; i < BURST_SIZE; i ++) {
-				ap_uint<512> tmp;
-				ap_uint<8> conversion_mode = conversion_settings.conversion_mode;
-				if ((conversion_mode == MODE_CONV) && (packet_in.frame_number < conversion_settings.pedestalG0_frames))
-					conversion_mode = MODE_PEDEG0;
-				convert_and_shuffle(packet_buffer[i].data, tmp, packed_pedeG0[offset+i],
-						packed_gainG0_1[i], packed_gainG0_2[i],
-						packed_pedeG1_1[i], packed_pedeG1_2[i], packed_gainG1_1[i], packed_gainG1_2[i],
-						packed_pedeG2_1[i], packed_pedeG2_2[i], packed_gainG2_1[i], packed_gainG2_2[i],
-						conversion_mode);
+				packet_buffer[0] = packet_in;
 
-				if (conversion_settings.conversion_mode == MODE_CONV) packet_buffer[i].data = tmp;
+				for (int i = 1; i < 8; i ++) {
+					in.read(packet_buffer[i]);
+				}
+				for (int i = 0; i < 8; i ++) {
+					ap_uint<512> tmp;
+					ap_uint<8> conversion_mode = conversion_settings.conversion_mode;
+					if ((conversion_mode == MODE_CONV) && (packet_in.frame_number < conversion_settings.pedestalG0_frames))
+						conversion_mode = MODE_PEDEG0;
+					convert_and_shuffle(packet_buffer[i].data, tmp, packed_pedeG0[offset+z*8+i],
+							packed_gainG0_1[i+z*8], packed_gainG0_2[i+z*8],
+							packed_pedeG1_1[i+z*8], packed_pedeG1_2[i+z*8], packed_gainG1_1[i+z*8], packed_gainG1_2[i+z*8],
+							packed_pedeG2_1[i+z*8], packed_pedeG2_2[i+z*8], packed_gainG2_1[i+z*8], packed_gainG2_2[i+z*8],
+							conversion_mode);
+
+					if (conversion_settings.conversion_mode == MODE_CONV) packet_buffer[i].data = tmp;
+				}
+				for (int i = 0; i < 8; i ++) {
+					out.write(packet_buffer[i]);
+				}
+				in.read(packet_in);
 			}
-			for (int i = 0; i < BURST_SIZE; i ++) {
-				out.write(packet_buffer[i]);
-			}
-			in.read(packet_in);
 		}
 		while ((packet_in.exit != 1) && (packet_in.axis_packet % BURST_SIZE != 0)) in.read(packet_in);
 	}
@@ -120,7 +123,7 @@ void convert_and_shuffle(ap_uint<512> data_in, ap_uint<512> &data_out,
 		ap_uint<256> packed_gainG2_1, ap_uint<256> packed_gainG2_2,
 		const ap_uint<8> mode) {
 #pragma HLS PIPELINE
-
+#pragma HLS INLINE off
 	const ap_fixed<18,16, SC_RND_CONV> half = 0.5f;
 
 	ap_uint<16> in_val[32];
