@@ -30,7 +30,7 @@
 
 //--------------------------------------------------------------------
 // 1: simplify the data casting style
-#define RELEASE_LEVEL		0x00000003
+#define RELEASE_LEVEL		0x00000004
 
 typedef char word_t[BPERDW];
 

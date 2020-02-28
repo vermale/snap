@@ -3,6 +3,7 @@
 
 #include "action_test.h"
 #include "snap_hls_if.h"
+#include "bitshuffle_core.h"
 
 #define NFRAMES 10
 #define MODULE 0
@@ -234,18 +235,18 @@ int main(int argc, char *argv[]) {
 
 	int16_t *out_frame_buffer_unshuf = (int16_t *) snap_malloc(FRAME_BUF_SIZE*NPIXEL*sizeof(uint16_t));
 
-
-	//bshuf_bitunshuffle(out_frame_buffer, out_frame_buffer_unshuf, FRAME_BUF_SIZE*NPIXEL*sizeof(uint16_t),
-	//        2, FRAME_BUF_SIZE*NPIXEL*sizeof(uint16_t));
+	bshuf_bitunshuffle(out_frame_buffer, out_frame_buffer_unshuf, NFRAMES*NPIXEL, 2, 32);
 
 	if (action_register.Data.mode == MODE_CONV) {
-		double mean_error;
+		double mean_error = 0.0;
 		for (int i = 0; i < NFRAMES; i++) {
-					for (int j = 0; j < NCH; j++) {
-						mean_error += frame_converted[i*NCH+j] - out_frame_buffer_unshuf[i*NMODULES*NCH+j+MODULE*NCH];
-					}
+			for (int j = 0; j < NCH; j++) {
+				if (!((frame_converted[i*NCH+j]  - out_frame_buffer_unshuf[i*NMODULES*NCH+j+MODULE*NCH] > 20000) || (frame_converted[i*NCH+j]  - out_frame_buffer_unshuf[i*NMODULES*NCH+j+MODULE*NCH] < -20000)))
+					mean_error += (frame_converted[i*NCH+j] - out_frame_buffer_unshuf[i*NMODULES*NCH+j+MODULE*NCH])*(frame_converted[i*NCH+j] - out_frame_buffer_unshuf[i*NMODULES*NCH+j+MODULE*NCH]);
+
+			}
 		}
-		mean_error /= NFRAMES*NCH;
+		mean_error = sqrt(mean_error/ (NFRAMES*NCH));
 		std::cout << "Mean error " << mean_error << std::endl;
 		if (mean_error > 0.33) retval = 2;
 	} else {
@@ -255,14 +256,12 @@ int main(int argc, char *argv[]) {
 			}
 		}
 	}
-	__hexdump(stdout, out_frame_buffer_unshuf, 64*64);
-	__hexdump(stdout, frame_converted, 64*64);
+	__hexdump(stdout, out_frame_buffer, 16*64);
+	__hexdump(stdout, out_frame_buffer_unshuf, 16*64);
+	__hexdump(stdout, frame_converted, 16*64);
 
 	__hexdump(stdout, jf_frame_headers, NFRAMES*NMODULES*sizeof(frame_header_t));
-	__hexdump(stdout, d_hbm_p10, NFRAMES*NMODULES*sizeof(frame_header_t));
-
 	__hexdump(stdout, out_frame_buffer_status, NFRAMES*NMODULES*128/8+64);
-	__hexdump(stdout, d_hbm_p11, NFRAMES*NMODULES*128/8+64);
 
 	free(d_hbm_p0);
 	free(d_hbm_p1);

@@ -132,10 +132,8 @@ void unpack_gainG1G2(ap_uint<256> in_1, ap_uint<256> in_2, gainG1G2_t outg[32]) 
 void data_shuffle(ap_uint<512> &out, ap_int<16> in[32]) {
 #pragma HLS INLINE
 	#pragma HLS PIPELINE
-	for (int i = 0; i < 256; i++) {
-			out[i] = in[i%16][i/16];
-			out[i+256] = in[i%16+16][i/16];
-    }
+	for (int i = 0; i < 512; i++) out[i] = in[i%32][i/32];
+
 }
 
 void data_pack(ap_uint<512> &out, ap_int<16> in[32]) {

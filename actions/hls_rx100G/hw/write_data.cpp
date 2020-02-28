@@ -28,6 +28,12 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 	int counter_ok = 0;
 	int counter_wrong = 0;
 
+	ap_uint<256> hbm_cache_1;
+	ap_uint<256> hbm_cache_2;
+	ap_uint<28> hbm_cache_1_addr;
+	ap_uint<28> hbm_cache_2_addr;
+
+
 	uint64_t head[NMODULES]; // number of the newest packet received for the frame
 #pragma HLS RESOURCE variable=head core=RAM_1P_LUTRAM
 	for (int i = 0; i < NMODULES; i++) {
@@ -52,9 +58,8 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 			ap_uint<4> module0 = packet_in.module;
 			ap_uint<8> eth_packet0 = packet_in.eth_packet;
 
-			//size_t packet_counter_addr = (module0 + frame_number0 * NMODULES) % (64 * STATUS_BUFFER_SIZE);
-
-			//bool is_head = false;
+			ap_uint<36> counter_bit_addr = packet_in.frame_number * 128 * NMODULES + packet_in.module * 128 + packet_in.eth_packet;
+			ap_uint<256> tmp = d_hbm_stat[counter_bit_addr / 256];
 
 			if (packet_in.frame_number > head[packet_in.module]) {
 				//is_head = true;
@@ -71,7 +76,9 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 					statistics(64 + i * 64 + 63, 64 + i * 64) = head[i];
 				}
 
-				memcpy(dout_gmem+out_frame_status_addr, &statistics, BPERDW);
+				// Status info is filled only every NMODULES frames, but interleaved between modules.
+				if (packet_in.frame_number % (NMODULES) == packet_in.module)
+					memcpy(dout_gmem+out_frame_status_addr, &statistics, BPERDW);
 			}
 
 			ap_uint<1> last_axis_user;
@@ -86,10 +93,8 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 
 			if ((packet_in.axis_packet == 127) && (packet_in.axis_user == 0)) {
 				counter_ok++;
-				ap_uint<36> bit_addr = packet_in.frame_number * 128 * NMODULES + packet_in.module * 128 + packet_in.eth_packet;
-				ap_uint<256> tmp = d_hbm_stat[bit_addr / 256];
-				tmp[bit_addr%256] = 1;
-				d_hbm_stat[bit_addr / 256] = tmp;
+				tmp[counter_bit_addr%256] = 1;
+				d_hbm_stat[counter_bit_addr / 256] = tmp;
 			} else counter_wrong++;
 
 			in.read(packet_in);
