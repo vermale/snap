@@ -82,33 +82,35 @@ d_hbm_p1[i] = tmp(511,256);
 	}
 }
 
+#define BURST_SIZE 16
+
 void save_pedestal(snap_membus_t *dout_gmem, size_t offset) {
-	for (size_t i = 0; i < NPIXEL * 2 / 64 / 8; i ++) {
-#pragma HLS PIPELINE II = 8
+	for (size_t i = 0; i < NPIXEL * 2 / 64 / BURST_SIZE; i ++) {
+#pragma HLS PIPELINE II = 16
 
-		packed_pedeG0_t tmp[8];
-		ap_uint<512> tmp2[8];
+		packed_pedeG0_t tmp[BURST_SIZE];
+		ap_uint<512> tmp2[BURST_SIZE];
 
-		for (int j = 0; j < 8; j++) tmp[j] = packed_pedeG0[8*i+j];
-		for (int j = 0; j < 8; j++) pack_pede(tmp[j],tmp2[j]);
-		memcpy(dout_gmem+offset+8*i, tmp2, 8*64);
+		for (int j = 0; j < BURST_SIZE; j++) tmp[j] = packed_pedeG0[BURST_SIZE*i+j];
+		for (int j = 0; j < BURST_SIZE; j++) pack_pede(tmp[j],tmp2[j]);
+		memcpy(dout_gmem+offset+BURST_SIZE*i, tmp2, BURST_SIZE*64);
 	}
 }
 
 void load_pedestal(snap_membus_t *din_gmem, size_t offset) {
-	for (size_t i = 0; i < NPIXEL * 2 / 64 / 8; i ++) {
-#pragma HLS PIPELINE II = 8
-		packed_pedeG0_t tmp[8];
-		ap_uint<512> tmp2[8];
-		memcpy(tmp2, din_gmem+offset+8*i, 8*64);
-		for (int j = 0; j < 8; j++) {
+	for (size_t i = 0; i < NPIXEL * 2 / 64 / BURST_SIZE; i ++) {
+#pragma HLS PIPELINE II = 16
+		packed_pedeG0_t tmp[BURST_SIZE];
+		ap_uint<512> tmp2[BURST_SIZE];
+		memcpy(tmp2, din_gmem+offset+BURST_SIZE*i, BURST_SIZE*64);
+		for (int j = 0; j < BURST_SIZE; j++) {
 			pedeG1G2_t in[32];
 			pedeG0_t out[32];
 			unpack_pedeG1G2(tmp2[j],in);
 			for (int k = 0; k < 32; k++ ) out[k] = in[k];
 			pack_pedeG0(tmp[j], out);
 		}
-		for (int j = 0; j < 8; j++) packed_pedeG0[8*i+j] = tmp[j];
+		for (int j = 0; j < BURST_SIZE; j++) packed_pedeG0[BURST_SIZE*i+j] = tmp[j];
 	}
 }
 
@@ -324,7 +326,7 @@ void hls_action(snap_membus_t *din_gmem, snap_membus_t *dout_gmem,
 #pragma HLS INTERFACE axis register off port=dout_eth
 
 #pragma HLS RESOURCE variable=packed_pedeG0 core=RAM_1P_URAM latency=1
-#pragma HLS ARRAY_PARTITION variable=packed_pedeG0 cyclic factor=8 dim=1
+#pragma HLS ARRAY_PARTITION variable=packed_pedeG0 cyclic factor=16 dim=1
 
 	/* Required Action Type Detection - NO CHANGE BELOW */
 	//	NOTE: switch generates better vhdl than "if" */
