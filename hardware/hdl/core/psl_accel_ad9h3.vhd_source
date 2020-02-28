@@ -892,6 +892,8 @@ ARCHITECTURE psl_accel OF psl_accel IS
     dout_eth_TKEEP           : OUT STD_LOGIC_VECTOR (63 downto 0);
     dout_eth_TUSER           : OUT STD_LOGIC_VECTOR (0 downto 0);
     dout_eth_TLAST           : OUT STD_LOGIC;
+    eth_reset                : OUT STD_LOGIC;
+
 #endif
     --
       -- AXI Control Register Interface
@@ -2159,9 +2161,9 @@ BEGIN
   BEGIN
     IF (rising_edge(ha_pclock)) THEN
       action_reset_n_q   <= NOT action_reset;
-#if defined(CONFIG_ENABLE_ETHERNET) && !defined(CONFIG_ENABLE_ETH_LOOP_BACK)
-      eth_rst            <= pci_user_reset;
-#endif
+--#if defined(CONFIG_ENABLE_ETHERNET) && !defined(CONFIG_ENABLE_ETH_LOOP_BACK)
+--      eth_rst            <= pci_user_reset;
+--#endif
       pci_user_reset_q   <= pci_user_reset;
       pci_user_reset_qq  <= pci_user_reset_q;      
     END IF;
@@ -2855,6 +2857,7 @@ BEGIN
     dout_eth_TKEEP                   => eth1_tx_tkeep,
     dout_eth_TUSER                   => eth1_tx_tuser,
     dout_eth_TLAST                   => eth1_tx_tlast,
+    eth_reset                        => eth_rst,
 #endif
       --
       -- AXI Control Register Interface

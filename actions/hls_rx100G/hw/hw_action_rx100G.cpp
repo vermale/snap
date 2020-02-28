@@ -17,6 +17,8 @@
 
 #include <string.h>
 #include "ap_int.h"
+#include "ap_utils.h"
+
 #include "hw_action_rx100G.h"
 
 packed_pedeG0_t packed_pedeG0[NMODULES * 512 * 1024 / 32];
@@ -270,7 +272,7 @@ void hls_action(snap_membus_t *din_gmem, snap_membus_t *dout_gmem,
 		snap_HBMbus_t *d_hbm_p6, snap_HBMbus_t *d_hbm_p7,
 		snap_HBMbus_t *d_hbm_p8, snap_HBMbus_t *d_hbm_p9,
 		snap_HBMbus_t *d_hbm_p10, snap_HBMbus_t *d_hbm_p11,
-		AXI_STREAM &din_eth, AXI_STREAM &dout_eth,
+		AXI_STREAM &din_eth, AXI_STREAM &dout_eth, volatile ap_uint<1> &eth_reset,
 		action_reg *act_reg,
 		action_RO_config_reg *Action_Config)
 {
@@ -322,6 +324,7 @@ void hls_action(snap_membus_t *din_gmem, snap_membus_t *dout_gmem,
 
 #pragma HLS INTERFACE axis register off port=din_eth
 #pragma HLS INTERFACE axis register off port=dout_eth
+#pragma HLS INTERFACE ap_none port=eth_reset
 
 #pragma HLS RESOURCE variable=packed_pedeG0 core=RAM_1P_URAM latency=1
 #pragma HLS ARRAY_PARTITION variable=packed_pedeG0 cyclic factor=8 dim=1
@@ -338,6 +341,17 @@ void hls_action(snap_membus_t *din_gmem, snap_membus_t *dout_gmem,
 		return;
 		break;
 	default:
+		// Ethernet IP needs to be restarted before action processing starts
+		reset_ethernet_mac: {
+#pragma HLS PROTOCOL fixed
+			eth_reset = 1;
+			int i = 0;
+			while (i < 16) {
+				i++;
+				ap_wait();
+			}
+			if (i == 16) eth_reset = 0;
+		}
 		/* process_action(din_gmem, dout_gmem, d_ddrmem, act_reg); */
 		// process_action(din_gmem, dout_gmem, din_eth, dout_eth, act_reg);
 		process_action(din_gmem, dout_gmem, d_hbm_p0, d_hbm_p1, d_hbm_p2, d_hbm_p3, d_hbm_p4, d_hbm_p5, d_hbm_p6, d_hbm_p7, d_hbm_p8, d_hbm_p9, d_hbm_p10, d_hbm_p11, din_eth, dout_eth, act_reg);
