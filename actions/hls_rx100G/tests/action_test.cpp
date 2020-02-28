@@ -25,7 +25,7 @@ void hls_action(snap_membus_t *din_gmem, snap_membus_t *dout_gmem,
 		snap_HBMbus_t *d_hbm_p8, snap_HBMbus_t *d_hbm_p9,
 		snap_HBMbus_t *d_hbm_p10, snap_HBMbus_t *d_hbm_p11,
 
-		AXI_STREAM &din_eth, AXI_STREAM &dout_eth,
+		AXI_STREAM &din_eth, AXI_STREAM &dout_eth, ap_uint<1> & eth_reset,
 		action_reg *act_reg, action_RO_config_reg *Action_Config);
 
 // From snap_tools.h - see LICENSE there
@@ -201,6 +201,8 @@ int main(int argc, char *argv[]) {
 	action_reg action_register;
 	action_RO_config_reg Action_Config;
 
+	ap_uint<1> eth_reset;
+
 	action_register.Data.expected_frames = NFRAMES;
 	action_register.Data.mode = MODE_CONV;
 	action_register.Control.flags = 1;
@@ -227,7 +229,7 @@ int main(int argc, char *argv[]) {
 
     hls_action(din_gmem, dout_gmem, d_hbm_p0, d_hbm_p1, d_hbm_p2, d_hbm_p3, d_hbm_p4, d_hbm_p5,
     		d_hbm_p6, d_hbm_p7, d_hbm_p8, d_hbm_p9, d_hbm_p10, d_hbm_p11,
-    		din_eth, dout_eth, &action_register, &Action_Config);
+    		din_eth, dout_eth, eth_reset, &action_register, &Action_Config);
 
 	ap_axiu_for_eth packet_out;
 
