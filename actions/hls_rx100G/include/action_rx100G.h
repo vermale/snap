@@ -37,6 +37,23 @@
 #define MODE_PEDEG2         4
 #define MODE_LOAD_CONSTANTS 5
 
+struct online_statistics_t {
+	uint32_t good_packets;
+	uint32_t err_packets;
+	uint32_t head[NMODULES];
+	uint32_t trigger_position;
+};
+
+struct header_info_t {
+	uint64_t jf_frame_number;
+	uint16_t udp_src_port;
+	uint16_t udp_dest_port;
+	uint32_t jf_debug;
+	uint64_t jf_timestamp;
+	uint64_t jf_bunch_id;
+};
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -269,6 +269,27 @@ int main(int argc, char *argv[]) {
 	__hexdump(stdout, jf_frame_headers, NFRAMES*NMODULES*sizeof(frame_header_t));
 	__hexdump(stdout, out_frame_buffer_status, NFRAMES*NMODULES*128/8+64);
 
+	online_statistics_t *online_statistics = (online_statistics_t *) out_frame_buffer_status;
+	std::cout << "Good Ethernet packets: " << online_statistics->good_packets << std::endl ;
+	std::cout << "Err  Ethernet packets: " << online_statistics->err_packets << std::endl ;
+	for (int i = 0; i < NMODULES; i++)
+	std::cout << "Head module " << i << ": " << online_statistics->head[i] << std::endl ;
+	std::cout << "Trigger position     : " << online_statistics->trigger_position << std::endl;
+
+	std::cout << std::endl;
+	header_info_t *header_info = (header_info_t *) jf_frame_headers;
+	std::cout << sizeof(header_info_t) << std::endl;
+	for (int i = 0; i < NFRAMES; i++) {
+		for (int j = 0; j < NMODULES; j++) {
+			std::cout << "Frame number " << header_info[i*NMODULES+j].jf_frame_number
+					<< " Module: " << j
+					<< " UDP src port: " << header_info[i*NMODULES+j].udp_src_port
+					<< " UDP src port: " << header_info[i*NMODULES+j].udp_dest_port
+					<< " Timestamp: " << header_info[i*NMODULES+j].jf_timestamp
+					<< " Debug: " << header_info[i*NMODULES+j].jf_debug << std::endl;
+		}
+	}
+
 	free(d_hbm_p0);
 	free(d_hbm_p1);
 	free(d_hbm_p2);

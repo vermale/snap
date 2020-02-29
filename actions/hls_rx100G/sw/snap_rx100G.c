@@ -149,6 +149,31 @@ int main()
     __hexdump(stdout, out_status_buffer, out_status_buffer_size);
     __hexdump(stdout, out_jf_header_buffer, out_jf_header_buffer_size);
 
+    std::cout << std::endl;
+	std::cout << "General statistics " << std::endl;
+	std::cout << "================== " << std::endl << std::endl;
+	online_statistics_t *online_statistics = (online_statistics_t *) out_status_buffer;
+	std::cout << "Good Ethernet packets: " << online_statistics->good_packets << std::endl ;
+	std::cout << "Err  Ethernet packets: " << online_statistics->err_packets << std::endl ;
+	for (int i = 0; i < NMODULES; i++)
+	std::cout << "Head module " << i << ": " << online_statistics->head[i] << std::endl ;
+	std::cout << "Trigger position     : " << online_statistics->trigger_position << std::endl;
+
+	std::cout << std::endl;
+
+	header_info_t *header_info = (header_info_t *) out_jf_header_buffer;
+	std::cout << "Header data " << std::endl;
+	std::cout << "=========== " << std::endl << std::endl;
+	for (int i = 0; i < NFRAMES; i++) {
+		for (int j = 0; j < NMODULES; j++) {
+			std::cout << "Frame number " << header_info[i*NMODULES+j].jf_frame_number
+					<< " Module: " << j
+					<< " UDP src port: " << header_info[i*NMODULES+j].udp_src_port
+					<< " UDP src port: " << header_info[i*NMODULES+j].udp_dest_port
+					<< " Timestamp: " << header_info[i*NMODULES+j].jf_timestamp
+					<< " Debug: " << header_info[i*NMODULES+j].jf_debug << std::endl;
+		}
+	}
 	// test return code
 	(cjob.retc == SNAP_RETC_SUCCESS) ? fprintf(stdout, "SUCCESS\n") : fprintf(stdout, "FAILED\n");
 	if (cjob.retc != SNAP_RETC_SUCCESS) {
