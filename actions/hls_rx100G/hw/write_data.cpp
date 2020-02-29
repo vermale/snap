@@ -28,10 +28,10 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 	for (int i = 0; i < NMODULES; i++) {
 #pragma HLS UNROLL
 		hbm_cache[i] = 0;
-		hbm_cache_addr[i] = 0;
+		hbm_cache_addr[i] = i;
 	}
 
-	uint64_t head[NMODULES]; // number of the newest packet received for the frame
+	ap_uint<24> head[NMODULES]; // number of the newest packet received for the frame
 #pragma HLS RESOURCE variable=head core=RAM_1P_LUTRAM
 	for (int i = 0; i < NMODULES; i++) {
 #pragma HLS UNROLL
@@ -65,18 +65,18 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 			}
 
 			if (packet_in.frame_number > head[packet_in.module]) {
-				//is_head = true;
-				//for (int i = 0; i < NMODULES; i++)
-				//	if (head[i] >= packet_in.frame_number) is_head = false;
-
 				head[packet_in.module] = packet_in.frame_number;
 				ap_uint<512> statistics = 0;
 
 				statistics(31,0) = counter_ok;
 				statistics(63,32) = counter_wrong;
 
+				// Save information about last trigger signal timing
+				if ((packet_in.module == 0) && (packet_in.trigger == 1))
+					statistics(64 + 32 * NMODULES + 31, 64 + 32 * NMODULES) = packet_in.frame_number;
+
 				for (int i = 0; i < NMODULES; i++) {
-					statistics(64 + i * 64 + 63, 64 + i * 64) = head[i];
+					statistics(64 + i * 32 + 31, 64 + i * 32) = head[i];
 				}
 
 				// Status info is filled only every NMODULES frames, but interleaved between modules.
