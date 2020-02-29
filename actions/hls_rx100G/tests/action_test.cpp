@@ -79,7 +79,7 @@ void make_packet(AXI_STREAM &din_eth, uint64_t frame_number, uint32_t eth_packet
 	packet->dest_mac[4] = 0xEE;
 	packet->dest_mac[5] = 0xF1;
 	packet->ipv4_header_h = 0x45; // Big endian in IP header!
-        packet->ipv4_header_total_length = 0x4C20; // Big endian in IP header!
+    packet->ipv4_header_total_length = 0x4C20; // Big endian in IP header!
 	packet->ipv4_header_dest_ip = 0x0532010A; // Big endian in IP header!
 	packet->ipv4_header_ttl_protocol = 0x1100;
 	packet->udp_dest_port = MODULE + 0xC0CC; // module number
@@ -214,18 +214,18 @@ int main(int argc, char *argv[]) {
 	action_register.Data.out_jf_packet_headers_addr = (uint64_t) jf_frame_headers;
 	action_register.Data.pedestalG0_frames = 0;
 
-	uint16_t *frame = (uint16_t *) calloc(MODULE_LINES * MODULE_COLS * NFRAMES, sizeof(uint16_t));
+	int16_t *frame = (int16_t *) calloc(MODULE_LINES * MODULE_COLS * NFRAMES, sizeof(uint16_t));
 	int16_t *frame_converted = (int16_t *) calloc(MODULE_LINES * MODULE_COLS * NFRAMES, sizeof(uint16_t));
 
 	for (int i = 0; i < NFRAMES; i++) {
 		loadBinFile("test_data/mod5_raw" + std::to_string(i) + ".bin", (char *)  (frame + NCH * i), MODULE_LINES * MODULE_COLS * sizeof(uint16_t));
 		loadBinFile("test_data/mod5_conv" + std::to_string(i) + ".bin", (char *)  (frame_converted + NCH * i), MODULE_LINES * MODULE_COLS * sizeof(uint16_t));
 		for (int j = 0; j < 128; j++) {
-			make_packet(din_eth, i+1, j, frame + NCH * i + 4096 * j);
+			make_packet(din_eth, i+1, j, (uint16_t *) (frame + NCH * i + 4096 * j));
 		}
 	}
 
-	make_packet(din_eth, NFRAMES+100, 0, frame);
+	make_packet(din_eth, NFRAMES+100, 0, (uint16_t *) frame);
 
     hls_action(din_gmem, dout_gmem, d_hbm_p0, d_hbm_p1, d_hbm_p2, d_hbm_p3, d_hbm_p4, d_hbm_p5,
     		d_hbm_p6, d_hbm_p7, d_hbm_p8, d_hbm_p9, d_hbm_p10, d_hbm_p11,
@@ -254,11 +254,15 @@ int main(int argc, char *argv[]) {
 	} else {
 		for (int i = 0; i < NFRAMES; i++) {
 			for (int j = 0; j < NCH; j++) {
-				if (frame[i*NCH+j] != out_frame_buffer[i*NMODULES*NCH+j+MODULE*NCH])  retval = 2;
+				if (frame[i*NCH+j] != out_frame_buffer[i*NMODULES*NCH+j+MODULE*NCH])  {
+					retval = 2;
+					std::cout << i << ":" << j << " " << frame[i*NCH+j] << " " << out_frame_buffer[i*NMODULES*NCH+j+MODULE*NCH] << std::endl;
+				}
 			}
 		}
 	}
 	__hexdump(stdout, out_frame_buffer, 16*64);
+	__hexdump(stdout, frame, 16*64);
 	__hexdump(stdout, out_frame_buffer_unshuf, 16*64);
 	__hexdump(stdout, frame_converted, 16*64);
 
