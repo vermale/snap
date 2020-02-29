@@ -320,9 +320,9 @@ void hls_action(snap_membus_t *din_gmem, snap_membus_t *dout_gmem,
 #pragma HLS INTERFACE m_axi port=d_hbm_p9 bundle=card_hbm_p9 offset=slave depth=512 \
 		max_read_burst_length=64  max_write_burst_length=64 latency=16
 #pragma HLS INTERFACE m_axi port=d_hbm_p10 bundle=card_hbm_p10 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=24
+		max_read_burst_length=64  max_write_burst_length=64
 #pragma HLS INTERFACE m_axi port=d_hbm_p11 bundle=card_hbm_p11 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=24
+		max_read_burst_length=64  max_write_burst_length=64
 
 #pragma HLS INTERFACE axis register off port=din_eth
 #pragma HLS INTERFACE axis register off port=dout_eth
