@@ -180,7 +180,7 @@ void read_eth_packet(AXI_STREAM &in, DATA_STREAM &out, eth_settings_t eth_settin
 			packet_out.data(303,0) = packet_in.data(511, 208);
 
 			// For 0th package, part of JF header is saved
-			if (header.jf_packet_number == 0) {
+			if (header.jf_packet_number == (128 / NMODULES) * packet_out.module) {
 				ap_uint<28> hbm_addr = header.jf_frame_number * NMODULES + (packet_out.module);
 				ap_uint<256> save_to_memory;
 				save_to_memory(63,0)    = header.jf_frame_number;
