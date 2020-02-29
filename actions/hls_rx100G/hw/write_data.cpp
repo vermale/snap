@@ -16,11 +16,6 @@
 
 #include "hw_action_rx100G.h"
 
-struct packet_counter_t {
-	uint64_t head;
-	ap_uint<8> counter[64];
-};
-
 void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buffer_addr, size_t out_frame_status_addr, snap_HBMbus_t *d_hbm_stat) {
 	data_packet_t packet_in;
 	in.read(packet_in);
@@ -28,11 +23,13 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 	int counter_ok = 0;
 	int counter_wrong = 0;
 
-	ap_uint<256> hbm_cache_1;
-	ap_uint<256> hbm_cache_2;
-	ap_uint<28> hbm_cache_1_addr;
-	ap_uint<28> hbm_cache_2_addr;
-
+	ap_uint<256> hbm_cache[NMODULES]; // Cache for HBM statistics
+	ap_uint<28> hbm_cache_addr[NMODULES];
+	for (int i = 0; i < NMODULES; i++) {
+#pragma HLS UNROLL
+		hbm_cache[i] = 0;
+		hbm_cache_addr[i] = 0;
+	}
 
 	uint64_t head[NMODULES]; // number of the newest packet received for the frame
 #pragma HLS RESOURCE variable=head core=RAM_1P_LUTRAM
@@ -58,8 +55,14 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 			ap_uint<4> module0 = packet_in.module;
 			ap_uint<8> eth_packet0 = packet_in.eth_packet;
 
-			ap_uint<36> counter_bit_addr = packet_in.frame_number * 128 * NMODULES + packet_in.module * 128 + packet_in.eth_packet;
-			ap_uint<256> tmp = d_hbm_stat[counter_bit_addr / 256];
+			ap_uint<28> hbm_cell_addr = (packet_in.frame_number / 2) * NMODULES + packet_in.module;
+			ap_uint<8> hbm_bit_addr = (packet_in.frame_number % 2) *128 + packet_in.eth_packet;
+
+			if (hbm_cache_addr[packet_in.module] != hbm_cell_addr) {
+				d_hbm_stat[hbm_cache_addr[packet_in.module]] = hbm_cache[packet_in.module];
+				hbm_cache_addr[packet_in.module] = hbm_cell_addr;
+				hbm_cache[packet_in.module] = d_hbm_stat[hbm_cell_addr];
+			}
 
 			if (packet_in.frame_number > head[packet_in.module]) {
 				//is_head = true;
@@ -92,9 +95,8 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 			memcpy(dout_gmem + out_frame_addr, buffer, 128*64);
 
 			if ((packet_in.axis_packet == 127) && (packet_in.axis_user == 0)) {
+				hbm_cache[module0][hbm_bit_addr] = 1;
 				counter_ok++;
-				tmp[counter_bit_addr%256] = 1;
-				d_hbm_stat[counter_bit_addr / 256] = tmp;
 			} else counter_wrong++;
 
 			in.read(packet_in);
@@ -104,6 +106,10 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 			in.read(packet_in);
 	}
 	ap_uint<512> statistics = 0;
+
+	for (int i = 0; i < NMODULES; i++)
+		d_hbm_stat[hbm_cache_addr[i]] = hbm_cache[i];
+
 
 	statistics(31,0) = counter_ok;
 	statistics(63,32) = counter_wrong;
