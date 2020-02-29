@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <iostream>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -55,12 +56,11 @@ int main()
 	uint64_t frames = NFRAMES;
 
 	// Time out
-	unsigned long timeout = 600;
+	unsigned long timeout = 600; //TODO: check if this can be a problem later
 	struct timeval etime, stime;
 
 	fprintf(stderr, "  prepare rx100G job of %ld bytes size\n", sizeof(mjob));
 
-	assert(sizeof(mjob) <= SNAP_JOBSIZE);
 	memset(&mjob, 0, sizeof(mjob));
 
     uint64_t out_data_buffer_size = FRAME_BUF_SIZE * NPIXEL * 2; // can store FRAME_BUF_SIZE frames
@@ -70,20 +70,21 @@ int main()
 
     // Arrays are allocated with mmap for the higest possible performance. Output is page aligned, so it will be also 64b aligned.
 
-    void *out_data_buffer  = mmap (NULL, out_data_buffer_size, PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS| MAP_POPULATE, -1, 0) ;
-    if (out_data_buffer == NULL) goto out_error;
+    void *out_data_buffer  = mmap (NULL, out_data_buffer_size, PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) ;
+    void *out_status_buffer = mmap (NULL, out_status_buffer_size, PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+    void *in_parameters_array = mmap (NULL, in_parameters_array_size, PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+    void *out_jf_header_buffer = mmap (NULL, out_jf_header_buffer_size, PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+
+    if ((out_data_buffer == NULL) || (out_status_buffer == NULL) ||
+    		(in_parameters_array == NULL) || (out_jf_header_buffer == NULL)) {
+    	std::cout << "Memory allocation error" << std::endl;
+    	exit(EXIT_FAILURE);
+    }
+
+    // Fill output arrays with zeros
     memset(out_data_buffer, 0x0, out_data_buffer_size);
-
-    void *out_status_buffer = mmap (NULL, out_status_buffer_size, PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS| MAP_POPULATE, -1, 0);
-    if (out_status_buffer == NULL) goto out_error;
     memset(out_status_buffer, 0x0, out_status_buffer_size);
-
-    void *in_parameters_array = mmap (NULL, in_parameters_array_size, PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS| MAP_POPULATE, -1, 0);
-    if (in_parameters_array == NULL) goto out_error;
-	memset(in_parameters_array, 0x0, in_parameters_array_size);
-
-	void *out_jf_header_buffer = mmap (NULL, out_jf_header_buffer_size, PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS| MAP_POPULATE, -1, 0);
-	if (out_jf_header_buffer == NULL) goto out_error;
+    memset(in_parameters_array, 0x0, in_parameters_array_size);
 	memset(out_jf_header_buffer, 0x0, out_jf_header_buffer_size);
 
     mjob.expected_frames = frames;
@@ -109,7 +110,7 @@ int main()
 	if (card == NULL) {
 		fprintf(stderr, "err: failed to open card %u: %s\n",
 			card_no, strerror(errno));
-		goto out_error;
+		exit(EXIT_FAILURE);
 	}
 
 	// Attach the action that will be used on the allocated card
@@ -117,18 +118,12 @@ int main()
 	if (action == NULL) {
 		fprintf(stderr, "err: failed to attach action %u: %s\n",
 			card_no, strerror(errno));
-		goto out_error1;
+		snap_card_free(card);
+		exit(EXIT_FAILURE);
 	}
 
 	// Fill the stucture of data exchanged with the action
 	snap_job_set(&cjob, &mjob, sizeof(mjob), NULL, 0);
-
-	// uncomment to dump the job structure
-	__hexdump(stderr, &mjob, sizeof(mjob));
-
-
-	// Collect the timestamp BEFORE the call of the action
-	gettimeofday(&stime, NULL);
 
 	// Call the action will:
 	//    write all the registers to the action (MMIO) 
@@ -137,12 +132,12 @@ int main()
 	//  + read all the registers from the action (MMIO) 
 	rc = snap_action_sync_execute_job(action, &cjob, timeout);
 
-	// Collect the timestamp AFTER the call of the action
-	gettimeofday(&etime, NULL);
 	if (rc != 0) {
 		fprintf(stderr, "err: job execution %d: %s!\n", rc,
 			strerror(errno));
-		goto out_error2;
+		snap_detach_action(action);
+		snap_card_free(card);
+		exit(EXIT_FAILURE);
 	}
 
     __hexdump(stdout, out_data_buffer, 130*64);
@@ -174,16 +169,6 @@ int main()
 					<< " Debug: " << header_info[i*NMODULES+j].jf_debug << std::endl;
 		}
 	}
-	// test return code
-	(cjob.retc == SNAP_RETC_SUCCESS) ? fprintf(stdout, "SUCCESS\n") : fprintf(stdout, "FAILED\n");
-	if (cjob.retc != SNAP_RETC_SUCCESS) {
-		fprintf(stderr, "err: Unexpected RETC=%x!\n", cjob.retc);
-		goto out_error2;
-	}
-
-	// Display the time of the action call (MMIO registers filled + execution)
-	fprintf(stdout, "RX100G took %lld usec\n",
-		(long long)timediff_usec(&etime, &stime));
 
 	// Detach action + disallocate the card
 	snap_detach_action(action);
@@ -197,12 +182,4 @@ int main()
 	munmap(out_jf_header_buffer, out_jf_header_buffer_size);
 
 	exit(exit_code);
-
- out_error2:
-	snap_detach_action(action);
- out_error1:
-	snap_card_free(card);
- out_error:
-    printf("Error\n");
-	exit(EXIT_FAILURE);
 }

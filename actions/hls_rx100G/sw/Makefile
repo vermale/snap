@@ -25,6 +25,7 @@
 #      build-system as required.
 #
 
+
 # Finding $SNAP_ROOT
 ifndef SNAP_ROOT
 # check if we are in sw folder of an action (three directories below snap root)
@@ -36,13 +37,25 @@ $(error Please make sure that $$SNAP_ROOT is set up correctly.)
 endif
 endif
 
+CXX=g++
+CPPFLAGS= -I. -I../include -I${SNAP_ROOT}/software/include -I/home/jungfrau/git/pslse/libcxl -I/home/jungfrau/git/pslse/common
+CXXFLAGS= -O3 -fpermissive
+LDFLAGS= -O3 ${SNAP_ROOT}/software/lib/libsnap.a -L/home/jungfrau/git/pslse/libcxl -lm -lcxl -lpthread
 # This is solution specific. Check if we can replace this by generics too.
 
-snap_rx100G: snap_rx100G.o
+SRCS=snap_rx100G.o
+
+snap_rx100G: $(SRCS)
+	$(CXX) $(SRCS) -o snap_rx100G $(JF_LDLIBS) ${LDFLAGS}
+
+snap_rx100G.o: snap_rx100G.cpp
+
+
+ 
 #snap_helloworld_objs = action_lowercase.o
 
 projs += snap_rx100G
 
 # If you have the host code outside of the default snap directory structure, 
 # change to /path/to/snap/actions/software.mk
-include $(SNAP_ROOT)/actions/software.mk
+# include $(SNAP_ROOT)/actions/software.mk
