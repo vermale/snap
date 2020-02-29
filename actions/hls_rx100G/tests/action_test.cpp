@@ -25,7 +25,7 @@ void hls_action(snap_membus_t *din_gmem, snap_membus_t *dout_gmem,
 		snap_HBMbus_t *d_hbm_p8, snap_HBMbus_t *d_hbm_p9,
 		snap_HBMbus_t *d_hbm_p10, snap_HBMbus_t *d_hbm_p11,
 
-		AXI_STREAM &din_eth, AXI_STREAM &dout_eth, ap_uint<1> & eth_reset,
+		AXI_STREAM &din_eth, AXI_STREAM &dout_eth, volatile ap_uint<1> & eth_reset,
 		action_reg *act_reg, action_RO_config_reg *Action_Config);
 
 // From snap_tools.h - see LICENSE there
