@@ -39,7 +39,7 @@ endif
 
 CXX=g++
 CPPFLAGS= -I. -I../include -I${SNAP_ROOT}/software/include -I/home/jungfrau/git/pslse/libcxl -I/home/jungfrau/git/pslse/common
-CXXFLAGS= -O3 -fpermissive
+CXXFLAGS= -O3
 LDFLAGS= -O3 ${SNAP_ROOT}/software/lib/libsnap.a -L/home/jungfrau/git/pslse/libcxl -lm -lcxl -lpthread
 # This is solution specific. Check if we can replace this by generics too.
 
@@ -50,12 +50,9 @@ snap_rx100G: $(SRCS)
 
 snap_rx100G.o: snap_rx100G.cpp
 
-
+clean:
+	rm -f *.o snap_rx100G
  
-#snap_helloworld_objs = action_lowercase.o
-
-projs += snap_rx100G
-
 # If you have the host code outside of the default snap directory structure, 
 # change to /path/to/snap/actions/software.mk
 # include $(SNAP_ROOT)/actions/software.mk
