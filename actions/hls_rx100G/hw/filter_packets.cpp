@@ -17,30 +17,31 @@
 #include "hw_action_rx100G.h"
 
 void filter_packets(DATA_STREAM &in, DATA_STREAM &out) {
-	data_packet_t packet_in[128];
-#pragma HLS RESOURCE variable=packet_in core=RAM_2P_LUTRAM
-#pragma HLS ARRAY_PARTITION variable=packet_in complete dim=1
-	int index = 0;
-	int packets_to_write = 0;
+	data_packet_t packet_in, packet_out;
 
-	in.read(packet_in[0]);
+	in.read(packet_in);
+	ap_uint<8> axis_packet = 0;
 
-	while (packet_in[index].exit != 1) {
-#pragma HLS pipeline
-		if ((packet_in[index].axis_packet == 127) && (packet_in[index].axis_user == 0)) {
-			packets_to_write = 128;
-		}
-		index = (index + 1) % 128;
-		if (packets_to_write > 0) {
-			out.write(packet_in[index]);
-			packets_to_write--;
-		}
-		in.read(packet_in[index]);
+	while (packet_in.exit == 0) {
+		if (packet_in.axis_packet == axis_packet) {
+			// packet_in is what is expected
+			packet_out = packet_in;
+			out.write(packet_out);
+			axis_packet = (axis_packet + 1) % 128;
+		} else {
+			packet_out.axis_user = 1; // Mark the packet as a wrong one
+			for (int i = axis_packet; i < 128; i++) {
+				packet_out.axis_packet = i;
+				out.write(packet_out);
+			}
+			packet_out = packet_in;
+			out.write(packet_out);
+			axis_packet = 1;
+		} in.read(packet_in);
 	}
-	while (packets_to_write > 0) {
-		index = (index + 1) % 128;
-		out.write(packet_in[index]);
-		packets_to_write--;
+	packet_out.axis_user = 1;
+	for (int i = 0; i < (128 - axis_packet) % 128; i++) {
+		out.write(packet_out);
 	}
-	out.write(packet_in[index]);
+	out.write(packet_in);
 }

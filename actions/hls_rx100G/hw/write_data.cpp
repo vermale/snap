@@ -40,7 +40,7 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 
 	while (packet_in.exit == 0) {
 
-		Loop_good_packet: while ((packet_in.exit == 0) && (packet_in.axis_packet == 0)) {
+		//Loop_good_packet: while ((packet_in.exit == 0) && (packet_in.axis_packet == 0)) {
 
 			// TODO: accounting which packets were converted
 #pragma HLS PIPELINE II=129
@@ -100,10 +100,10 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 			} else counter_wrong++;
 
 			in.read(packet_in);
-		}
+		//}
 		// forward, to get to a beginning of a meaningful packet:
-		Loop_err_packet: while ((packet_in.exit == 0) && (packet_in.axis_packet != 0))
-			in.read(packet_in);
+		//Loop_err_packet: while ((packet_in.exit == 0) && (packet_in.axis_packet != 0))
+		//	in.read(packet_in);
 	}
 	ap_uint<512> statistics = 0;
 

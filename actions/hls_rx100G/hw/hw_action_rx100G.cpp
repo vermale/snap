@@ -149,11 +149,13 @@ void collect_data(AXI_STREAM &din_eth,
 
 #pragma HLS DATAFLOW
 DATA_STREAM raw;
+DATA_STREAM filtered_raw;
 DATA_STREAM converted;
 #pragma HLS STREAM variable=raw depth=512
 #pragma HLS STREAM variable=converted depth=512
 read_eth_packet(din_eth, raw, eth_settings, d_hbm_p10);
-convert_data(raw, converted,
+filter_packets(raw, filtered_raw);
+convert_data(filtered_raw, converted,
 		d_hbm_p0, d_hbm_p1,
 		d_hbm_p2, d_hbm_p3,
 		d_hbm_p4, d_hbm_p5,
