@@ -67,7 +67,7 @@ typedef hls::stream<ap_axiu_for_eth> AXI_STREAM;
 
 struct data_packet_t {
 	ap_uint<512> data;
-	ap_uint<64> frame_number; //
+	ap_uint<24> frame_number; // allowing 16 million frames or 2.5h at 2 kHz
 	ap_uint<4> module; // 0..16
 	ap_uint<8> eth_packet; // 0..128
 	ap_uint<8> axis_packet; // 0..128

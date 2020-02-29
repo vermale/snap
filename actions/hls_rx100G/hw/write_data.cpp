@@ -51,7 +51,7 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 
 			ap_uint<512> buffer[128];
 
-			uint64_t frame_number0 = packet_in.frame_number;
+			ap_uint<24> frame_number0 = packet_in.frame_number;
 			ap_uint<4> module0 = packet_in.module;
 			ap_uint<8> eth_packet0 = packet_in.eth_packet;
 
