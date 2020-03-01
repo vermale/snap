@@ -25,6 +25,8 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 
 	ap_uint<256> hbm_cache[NMODULES]; // Cache for HBM statistics
 	ap_uint<28> hbm_cache_addr[NMODULES];
+#pragma HLS RESOURCE core=RAM_1P_LUTRAM variable=hbm_cache
+#pragma HLS RESOURCE core=RAM_1P_LUTRAM variable=hbm_cache_addr
 	for (int i = 0; i < NMODULES; i++) {
 #pragma HLS UNROLL
 		hbm_cache[i] = 0;
