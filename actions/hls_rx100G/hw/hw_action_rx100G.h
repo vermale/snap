@@ -78,6 +78,29 @@ struct data_packet_t {
 
 typedef hls::stream<data_packet_t> DATA_STREAM;
 
+struct data_packet_for_conversion_t {
+	ap_uint<512> data;
+	ap_uint<24> frame_number; // allowing 16 million frames or 2.5h at 2 kHz
+	ap_uint<4> module; // 0..16
+	ap_uint<8> eth_packet; // 0..128
+	ap_uint<8> axis_packet; // 0..128
+    ap_uint<1> axis_user; // TUSER from AXIS
+    ap_uint<1> exit; // exit
+    ap_uint<1> trigger; // debug flag on
+    ap_uint<256> packed_gainG0_1;
+    ap_uint<256> packed_gainG0_2;
+    ap_uint<256> packed_pedeG1_1;
+    ap_uint<256> packed_pedeG1_2;
+    ap_uint<256> packed_gainG1_1;
+    ap_uint<256> packed_gainG1_2;
+    ap_uint<256> packed_pedeG2_1;
+    ap_uint<256> packed_pedeG2_2;
+    ap_uint<256> packed_gainG2_1;
+    ap_uint<256> packed_gainG2_2;
+};
+
+typedef hls::stream<data_packet_for_conversion_t> DATA_STREAM_FOR_CONVERSION;
+
 struct eth_settings_t {
 	uint64_t frame_number_to_stop;
 	uint64_t frame_number_to_quit;
@@ -152,6 +175,17 @@ void send_gratious_arp(AXI_STREAM &out, ap_uint<48> mac, ap_uint<32> ipv4_addres
 void read_eth_packet(AXI_STREAM &deth_in, DATA_STREAM &raw_out, eth_settings_t eth_settings, snap_HBMbus_t *d_hbm_header);
 
 void filter_packets(DATA_STREAM &in, DATA_STREAM &out);
+
+void fetch_constants1(DATA_STREAM &in, DATA_STREAM_FOR_CONVERSION &out,
+		snap_HBMbus_t *d_hbm_p0, snap_HBMbus_t *d_hbm_p1,
+		snap_HBMbus_t *d_hbm_p2, snap_HBMbus_t *d_hbm_p3,
+		snap_HBMbus_t *d_hbm_p4, snap_HBMbus_t *d_hbm_p5);
+
+void fetch_constants2(DATA_STREAM_FOR_CONVERSION &in, DATA_STREAM_FOR_CONVERSION &out,
+		snap_HBMbus_t *d_hbm_p6, snap_HBMbus_t *d_hbm_p7,
+		snap_HBMbus_t *d_hbm_p8, snap_HBMbus_t *d_hbm_p9);
+
+void convert_data(DATA_STREAM_FOR_CONVERSION &in, DATA_STREAM &out, conversion_settings_t conversion_settings);
 
 void convert_data(DATA_STREAM &in, DATA_STREAM &out,
 		snap_HBMbus_t *d_hbm_p0, snap_HBMbus_t *d_hbm_p1,

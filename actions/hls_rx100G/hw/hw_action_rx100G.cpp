@@ -84,11 +84,11 @@ d_hbm_p1[i] = tmp(511,256);
 	}
 }
 
-#define BURST_SIZE 16
+#define BURST_SIZE 8
 
 void save_pedestal(snap_membus_t *dout_gmem, size_t offset) {
 	for (size_t i = 0; i < NPIXEL * 2 / 64 / BURST_SIZE; i ++) {
-#pragma HLS PIPELINE II = 16
+#pragma HLS PIPELINE II = 8
 
 		packed_pedeG0_t tmp[BURST_SIZE];
 		ap_uint<512> tmp2[BURST_SIZE];
@@ -101,7 +101,7 @@ void save_pedestal(snap_membus_t *dout_gmem, size_t offset) {
 
 void load_pedestal(snap_membus_t *din_gmem, size_t offset) {
 	for (size_t i = 0; i < NPIXEL * 2 / 64 / BURST_SIZE; i ++) {
-#pragma HLS PIPELINE II = 16
+#pragma HLS PIPELINE II = 8
 		packed_pedeG0_t tmp[BURST_SIZE];
 		ap_uint<512> tmp2[BURST_SIZE];
 		memcpy(tmp2, din_gmem+offset+BURST_SIZE*i, BURST_SIZE*64);
@@ -148,21 +148,29 @@ void collect_data(AXI_STREAM &din_eth,
 		conversion_settings_t conversion_settings) {
 
 #pragma HLS DATAFLOW
-DATA_STREAM raw;
-DATA_STREAM filtered_raw;
-DATA_STREAM converted;
-#pragma HLS STREAM variable=raw depth=512
-#pragma HLS STREAM variable=converted depth=512
-read_eth_packet(din_eth, raw, eth_settings, d_hbm_p10);
-filter_packets(raw, filtered_raw);
-convert_data(filtered_raw, converted,
-		d_hbm_p0, d_hbm_p1,
-		d_hbm_p2, d_hbm_p3,
-		d_hbm_p4, d_hbm_p5,
-		d_hbm_p6, d_hbm_p7,
-		d_hbm_p8, d_hbm_p9,
-		conversion_settings);
-write_data(converted, dout_gmem, out_frame_buffer_addr, out_frame_status_addr, d_hbm_p11);
+	DATA_STREAM raw;
+	DATA_STREAM filtered_raw;
+	DATA_STREAM_FOR_CONVERSION for_conversion1;
+	DATA_STREAM_FOR_CONVERSION for_conversion2;
+	DATA_STREAM converted;
+
+#pragma HLS STREAM variable=filtered_raw depth=64
+#pragma HLS RESOURCE core=FIFO_LUTRAM variable=filtered_raw
+#pragma HLS STREAM variable=converted depth=128
+#pragma HLS RESOURCE core=FIFO_LUTRAM variable=converted
+
+	read_eth_packet(din_eth, raw, eth_settings, d_hbm_p10);
+	filter_packets(raw, filtered_raw);
+	fetch_constants1(filtered_raw, for_conversion1,
+			d_hbm_p0, d_hbm_p1,
+			d_hbm_p2, d_hbm_p3,
+			d_hbm_p4, d_hbm_p5);
+	fetch_constants2(for_conversion1, for_conversion2,
+			d_hbm_p6, d_hbm_p7,
+			d_hbm_p8, d_hbm_p9);
+	convert_data(for_conversion2, converted,
+			conversion_settings);
+	write_data(converted, dout_gmem, out_frame_buffer_addr, out_frame_status_addr, d_hbm_p11);
 }
 
 //----------------------------------------------------------------------
@@ -282,11 +290,11 @@ void hls_action(snap_membus_t *din_gmem, snap_membus_t *dout_gmem,
 {
 	// Host Memory AXI Interface - CANNOT BE REMOVED - NO CHANGE BELOW
 #pragma HLS INTERFACE m_axi port=din_gmem bundle=host_mem offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=20
+		max_read_burst_length=64  max_write_burst_length=64
 #pragma HLS INTERFACE s_axilite port=din_gmem bundle=ctrl_reg offset=0x030
 
 #pragma HLS INTERFACE m_axi port=dout_gmem bundle=host_mem offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=20
+		max_read_burst_length=64  max_write_burst_length=64
 #pragma HLS INTERFACE s_axilite port=dout_gmem bundle=ctrl_reg offset=0x040
 
 	/*  // DDR memory Interface - CAN BE COMMENTED IF UNUSED
@@ -302,25 +310,25 @@ void hls_action(snap_membus_t *din_gmem, snap_membus_t *dout_gmem,
 #pragma HLS INTERFACE s_axilite port=return bundle=ctrl_reg
 
 #pragma HLS INTERFACE m_axi port=d_hbm_p0 bundle=card_hbm_p0 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=16
+		max_read_burst_length=64  max_write_burst_length=64
 #pragma HLS INTERFACE m_axi port=d_hbm_p1 bundle=card_hbm_p1 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=16
+		max_read_burst_length=64  max_write_burst_length=64
 #pragma HLS INTERFACE m_axi port=d_hbm_p2 bundle=card_hbm_p2 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=16
+		max_read_burst_length=64  max_write_burst_length=64
 #pragma HLS INTERFACE m_axi port=d_hbm_p3 bundle=card_hbm_p3 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=16
+		max_read_burst_length=64  max_write_burst_length=64
 #pragma HLS INTERFACE m_axi port=d_hbm_p4 bundle=card_hbm_p4 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=16
+		max_read_burst_length=64  max_write_burst_length=64
 #pragma HLS INTERFACE m_axi port=d_hbm_p5 bundle=card_hbm_p5 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=16
+		max_read_burst_length=64  max_write_burst_length=64
 #pragma HLS INTERFACE m_axi port=d_hbm_p6 bundle=card_hbm_p6 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=16
+		max_read_burst_length=64  max_write_burst_length=64
 #pragma HLS INTERFACE m_axi port=d_hbm_p7 bundle=card_hbm_p7 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=16
+		max_read_burst_length=64  max_write_burst_length=64
 #pragma HLS INTERFACE m_axi port=d_hbm_p8 bundle=card_hbm_p8 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=16
+		max_read_burst_length=64  max_write_burst_length=64
 #pragma HLS INTERFACE m_axi port=d_hbm_p9 bundle=card_hbm_p9 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=16
+		max_read_burst_length=64  max_write_burst_length=64
 #pragma HLS INTERFACE m_axi port=d_hbm_p10 bundle=card_hbm_p10 offset=slave depth=512 \
 		max_read_burst_length=64  max_write_burst_length=64
 #pragma HLS INTERFACE m_axi port=d_hbm_p11 bundle=card_hbm_p11 offset=slave depth=512 \
@@ -330,8 +338,8 @@ void hls_action(snap_membus_t *din_gmem, snap_membus_t *dout_gmem,
 #pragma HLS INTERFACE axis register off port=dout_eth
 #pragma HLS INTERFACE ap_none port=eth_reset
 
-#pragma HLS RESOURCE variable=packed_pedeG0 core=RAM_1P_URAM latency=1
-#pragma HLS ARRAY_PARTITION variable=packed_pedeG0 cyclic factor=16 dim=1
+#pragma HLS RESOURCE variable=packed_pedeG0 core=RAM_1P_URAM
+#pragma HLS ARRAY_PARTITION variable=packed_pedeG0 cyclic factor=8 dim=1
 
 	/* Required Action Type Detection - NO CHANGE BELOW */
 	//	NOTE: switch generates better vhdl than "if" */

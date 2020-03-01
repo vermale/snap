@@ -39,7 +39,140 @@ void pedestal_update(ap_uint<512> data_in, packed_pedeG0_t& packed_pede, ap_uint
 	pack_pedeG0(packed_pede, pedestal);
 }
 
-#define BURST_SIZE 16
+#define PREFETCH_SIZE 64
+void fetch_constants1(DATA_STREAM &in, DATA_STREAM_FOR_CONVERSION &out,
+		snap_HBMbus_t *d_hbm_p0, snap_HBMbus_t *d_hbm_p1,
+		snap_HBMbus_t *d_hbm_p2, snap_HBMbus_t *d_hbm_p3,
+		snap_HBMbus_t *d_hbm_p4, snap_HBMbus_t *d_hbm_p5) {
+
+	data_packet_t packet_in;
+	data_packet_for_conversion_t packet_out;
+	in.read(packet_in);
+
+	while (packet_in.exit != 1) {
+#pragma HLS PIPELINE II=64
+		size_t offset = packet_in.module * 128 * 128 + 128 * packet_in.eth_packet + packet_in.axis_packet;
+		ap_uint<256> packed_gainG0_1[PREFETCH_SIZE], packed_gainG0_2[PREFETCH_SIZE];
+		ap_uint<256> packed_gainG1_1[PREFETCH_SIZE], packed_gainG1_2[PREFETCH_SIZE];
+		ap_uint<256> packed_gainG2_1[PREFETCH_SIZE], packed_gainG2_2[PREFETCH_SIZE];
+
+		memcpy(packed_gainG0_1,d_hbm_p0+offset, PREFETCH_SIZE*32);
+		memcpy(packed_gainG0_2,d_hbm_p1+offset, PREFETCH_SIZE*32);
+		memcpy(packed_gainG1_1,d_hbm_p2+offset, PREFETCH_SIZE*32);
+		memcpy(packed_gainG1_2,d_hbm_p3+offset, PREFETCH_SIZE*32);
+		memcpy(packed_gainG2_1,d_hbm_p4+offset, PREFETCH_SIZE*32);
+		memcpy(packed_gainG2_2,d_hbm_p5+offset, PREFETCH_SIZE*32);
+
+		for (int i = 0; i < PREFETCH_SIZE; i++) {
+			packet_out.axis_packet = packet_in.axis_packet;
+			packet_out.data = packet_in.data;
+			packet_out.axis_user = packet_in.axis_user;
+			packet_out.exit = packet_in.exit;
+			packet_out.frame_number = packet_in.frame_number;
+			packet_out.eth_packet = packet_in.eth_packet;
+			packet_out.module = packet_in.module;
+			packet_out.trigger = packet_in.trigger;
+			packet_out.packed_gainG0_1 = packed_gainG0_1[i];
+			packet_out.packed_gainG0_2 = packed_gainG0_2[i];
+			packet_out.packed_gainG1_1 = packed_gainG1_1[i];
+			packet_out.packed_gainG1_2 = packed_gainG1_2[i];
+			packet_out.packed_gainG2_1 = packed_gainG2_1[i];
+			packet_out.packed_gainG2_2 = packed_gainG2_2[i];
+			out.write(packet_out);
+			in.read(packet_in);
+		}
+	}
+	packet_out.exit = 1;
+	out.write(packet_out);
+}
+
+void fetch_constants2(DATA_STREAM_FOR_CONVERSION &in, DATA_STREAM_FOR_CONVERSION &out,
+		snap_HBMbus_t *d_hbm_p6, snap_HBMbus_t *d_hbm_p7,
+		snap_HBMbus_t *d_hbm_p8, snap_HBMbus_t *d_hbm_p9) {
+
+	data_packet_for_conversion_t packet_in, packet_out;
+	in.read(packet_in);
+
+	while (packet_in.exit != 1) {
+#pragma HLS PIPELINE II=64
+		size_t offset = packet_in.module * 128 * 128 + 128 * packet_in.eth_packet + packet_in.axis_packet;
+		ap_uint<256> packed_pedeG1_1[PREFETCH_SIZE], packed_pedeG1_2[PREFETCH_SIZE];
+		ap_uint<256> packed_pedeG2_1[PREFETCH_SIZE], packed_pedeG2_2[PREFETCH_SIZE];
+
+		memcpy(packed_pedeG1_1,d_hbm_p6+offset, PREFETCH_SIZE*32);
+		memcpy(packed_pedeG1_2,d_hbm_p7+offset, PREFETCH_SIZE*32);
+		memcpy(packed_pedeG2_1,d_hbm_p8+offset, PREFETCH_SIZE*32);
+		memcpy(packed_pedeG2_2,d_hbm_p9+offset, PREFETCH_SIZE*32);
+
+		for (int i = 0; i < PREFETCH_SIZE; i++) {
+			packet_out.axis_packet = packet_in.axis_packet;
+			packet_out.data = packet_in.data;
+			packet_out.axis_user = packet_in.axis_user;
+			packet_out.exit = packet_in.exit;
+			packet_out.frame_number = packet_in.frame_number;
+			packet_out.eth_packet = packet_in.eth_packet;
+			packet_out.module = packet_in.module;
+			packet_out.trigger = packet_in.trigger;
+			packet_out.packed_gainG0_1 = packet_in.packed_gainG0_1;
+			packet_out.packed_gainG0_2 = packet_in.packed_gainG0_2;
+			packet_out.packed_gainG1_1 = packet_in.packed_gainG1_1;
+			packet_out.packed_gainG1_2 = packet_in.packed_gainG1_2;
+			packet_out.packed_gainG2_1 = packet_in.packed_gainG2_1;
+			packet_out.packed_gainG2_2 = packet_in.packed_gainG2_2;
+			packet_out.packed_pedeG1_1 = packed_pedeG1_1[i];
+			packet_out.packed_pedeG1_2 = packed_pedeG1_2[i];
+			packet_out.packed_pedeG2_1 = packed_pedeG2_1[i];
+			packet_out.packed_pedeG2_2 = packed_pedeG2_2[i];
+			out.write(packet_out);
+			in.read(packet_in);
+		}
+	}
+	packet_out.exit = 1;
+	out.write(packet_out);
+}
+
+#define BURST_SIZE 8
+
+void convert_data(DATA_STREAM_FOR_CONVERSION &in, DATA_STREAM &out, conversion_settings_t conversion_settings)
+{
+	data_packet_for_conversion_t packet_in;
+	data_packet_t packet_out;
+	in.read(packet_in);
+	Convert_and_forward: while ((packet_in.exit != 1) && (packet_in.axis_packet % BURST_SIZE == 0)) {
+#pragma HLS pipeline II = 8
+		size_t offset = packet_in.module * 128 * 128 + 128 * packet_in.eth_packet + packet_in.axis_packet;
+		ap_uint<8> conversion_mode = conversion_settings.conversion_mode;
+		if ((conversion_mode == MODE_CONV) && (packet_in.frame_number < conversion_settings.pedestalG0_frames))
+			conversion_mode = MODE_PEDEG0;
+		for (int i = 0; i < BURST_SIZE; i++) {
+			ap_uint<512> converted_val;
+
+			convert_and_shuffle(packet_in.data, converted_val, packed_pedeG0[offset+i],
+					packet_in.packed_gainG0_1, packet_in.packed_gainG0_2,
+					packet_in.packed_pedeG1_1, packet_in.packed_pedeG1_2, packet_in.packed_gainG1_1, packet_in.packed_gainG1_2,
+					packet_in.packed_pedeG2_1, packet_in.packed_pedeG2_2, packet_in.packed_gainG2_1, packet_in.packed_gainG2_2,
+					conversion_mode);
+			if (conversion_settings.conversion_mode == MODE_RAW) packet_out.data = packet_in.data;
+			else	packet_out.data = converted_val;
+
+			packet_out.axis_packet = packet_in.axis_packet;
+			packet_out.axis_user = packet_in.axis_user;
+			packet_out.exit = packet_in.exit;
+			packet_out.frame_number = packet_in.frame_number;
+			packet_out.eth_packet = packet_in.eth_packet;
+			packet_out.module = packet_in.module;
+			packet_out.trigger = packet_in.trigger;
+			out.write(packet_out);
+			in.read(packet_in);
+		}
+	}
+	packet_out.exit = 1;
+	out.write(packet_out);
+}
+
+
+
+
 
 void convert_data(DATA_STREAM &in, DATA_STREAM &out,
 		snap_HBMbus_t *d_hbm_p0, snap_HBMbus_t *d_hbm_p1,
