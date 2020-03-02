@@ -116,9 +116,14 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 	statistics(31,0) = counter_ok;
 	statistics(63,32) = counter_wrong;
 
-	for (int i = 0; i < NMODULES; i++) {
-		statistics(64 + i * 64 + 63, 64 + i * 64) = head[i];
-	}
+        // Save information about last trigger signal timing
+        if ((packet_in.module == 0) && (packet_in.trigger == 1))
+              statistics(64 + 32 * NMODULES + 31, 64 + 32 * NMODULES) = packet_in.frame_number;
+
+        for (int i = 0; i < NMODULES; i++) {
+              statistics(64 + i * 32 + 31, 64 + i * 32) = head[i];
+        }
+
 	memcpy(dout_gmem+out_frame_status_addr, &statistics, BPERDW);
 
 }
