@@ -86,9 +86,16 @@ update_ip_catalog -rebuild -scan_changes
   # FIFO to hold ~8 packets
   set axis_data_fifo_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axis_data_fifo:2.0 axis_data_fifo_0 ]
   set_property -dict [ list \
-   CONFIG.FIFO_DEPTH {8192} \
+   CONFIG.FIFO_DEPTH {2048} \
    CONFIG.IS_ACLK_ASYNC {1} \
  ] $axis_data_fifo_0
+
+  # Create instance: axis_data_fifo_1, and set properties
+  set axis_data_fifo_1 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axis_data_fifo:2.0 axis_data_fifo_1 ]
+  set_property -dict [ list \
+   CONFIG.FIFO_DEPTH {32768} \
+   CONFIG.FIFO_MEMORY_TYPE {ultra} \
+ ] $axis_data_fifo_1
 
   set s_axis_tx [ create_bd_intf_port -mode Slave -vlnv xilinx.com:interface:axis_rtl:1.0 s_axis_tx ]
   set_property -dict [ list \
@@ -158,11 +165,20 @@ if { $action_clock_freq == "225MHZ" } {
    CONFIG.LOGO_FILE {data/sym_notgate.png} \
  ] $util_vector_logic_0
 
+  # Create instance: util_vector_logic_1, and set properties
+  set util_vector_logic_1 [ create_bd_cell -type ip -vlnv xilinx.com:ip:util_vector_logic:2.0 util_vector_logic_1 ]
+  set_property -dict [ list \
+   CONFIG.C_OPERATION {not} \
+   CONFIG.C_SIZE {1} \
+   CONFIG.LOGO_FILE {data/sym_notgate.png} \
+ ] $util_vector_logic_1
+
   # Create instance: xlconstant_0, and set properties
   set xlconstant_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:xlconstant:1.1 xlconstant_0 ]
 
   # Create interface connections
-  connect_bd_intf_net -intf_net axis_data_fifo_0_M_AXIS [get_bd_intf_ports m_axis_rx] [get_bd_intf_pins axis_data_fifo_0/M_AXIS]
+  connect_bd_intf_net -intf_net axis_data_fifo_0_M_AXIS [get_bd_intf_pins axis_data_fifo_0/M_AXIS] [get_bd_intf_pins axis_data_fifo_1/S_AXIS]
+  connect_bd_intf_net -intf_net axis_data_fifo_1_M_AXIS [get_bd_intf_ports m_axis_rx] [get_bd_intf_pins axis_data_fifo_1/M_AXIS]
   connect_bd_intf_net -intf_net cmac_usplus_0_axis_rx [get_bd_intf_pins axis_data_fifo_0/S_AXIS] [get_bd_intf_pins cmac_usplus_0/axis_rx]
   connect_bd_intf_net -intf_net cmac_usplus_0_gt_tx [get_bd_intf_ports o_gt_tx] [get_bd_intf_pins cmac_usplus_0/gt_tx]
   connect_bd_intf_net -intf_net i_gt_ref_1 [get_bd_intf_ports i_gt_ref] [get_bd_intf_pins cmac_usplus_0/gt_ref_clk]
@@ -172,18 +188,19 @@ if { $action_clock_freq == "225MHZ" } {
   connect_bd_net -net cmac_usplus_0_gt_txusrclk2 [get_bd_pins axis_data_fifo_0/s_axis_aclk] [get_bd_pins cmac_usplus_0/gt_txusrclk2] [get_bd_pins cmac_usplus_0/rx_clk] [get_bd_pins axis_clock_converter_tx_0/m_axis_aclk]
   connect_bd_net -net cmac_usplus_0_usr_rx_reset [get_bd_pins cmac_usplus_0/usr_rx_reset] [get_bd_pins util_vector_logic_0/Op1]
   connect_bd_net -net ctl_tx_enable_1 [get_bd_ports i_ctl_tx_enable] [get_bd_pins cmac_usplus_0/ctl_tx_enable]
-  connect_bd_net -net i_capi_clk_1 [get_bd_ports i_capi_clk] [get_bd_pins axis_data_fifo_0/m_axis_aclk] [get_bd_pins cmac_usplus_0/drp_clk] [get_bd_pins cmac_usplus_0/init_clk] [get_bd_pins axis_clock_converter_tx_0/s_axis_aclk]
+  connect_bd_net -net i_capi_clk_1 [get_bd_ports i_capi_clk] [get_bd_pins axis_data_fifo_0/m_axis_aclk] [get_bd_pins cmac_usplus_0/drp_clk] [get_bd_pins cmac_usplus_0/init_clk] [get_bd_pins axis_data_fifo_1/s_axis_aclk] [get_bd_pins axis_clock_converter_tx_0/s_axis_aclk]
   connect_bd_net -net i_core_rx_reset_1 [get_bd_ports i_core_rx_reset] [get_bd_pins cmac_usplus_0/core_rx_reset]
   connect_bd_net -net i_core_tx_reset_1 [get_bd_ports i_core_tx_reset] [get_bd_pins cmac_usplus_0/core_tx_reset]
   connect_bd_net -net i_ctl_rx_enable_1 [get_bd_ports i_ctl_rx_enable] [get_bd_pins cmac_usplus_0/ctl_rx_enable]
   connect_bd_net -net i_ctl_rx_rsfec_enable_1 [get_bd_ports i_ctl_rx_rsfec_enable] [get_bd_pins cmac_usplus_0/ctl_rx_rsfec_enable]
   connect_bd_net -net i_ctl_tx_rsfec_enable_1 [get_bd_ports i_ctl_tx_rsfec_enable] [get_bd_pins cmac_usplus_0/ctl_tx_rsfec_enable]
-  connect_bd_net -net i_sys_reset_1 [get_bd_ports i_sys_reset] [get_bd_pins cmac_usplus_0/sys_reset]
+  connect_bd_net -net i_sys_reset_1 [get_bd_ports i_sys_reset] [get_bd_pins cmac_usplus_0/sys_reset] [get_bd_pins util_vector_logic_1/Op1]
   connect_bd_net -net util_vector_logic_0_Res [get_bd_pins axis_data_fifo_0/s_axis_aresetn] [get_bd_pins util_vector_logic_0/Res] [get_bd_pins axis_clock_converter_tx_0/m_axis_aresetn]
 
   connect_bd_intf_net -intf_net axis_clock_converter_tx_0_M_AXIS [get_bd_intf_pins axis_clock_converter_tx_0/M_AXIS] [get_bd_intf_pins cmac_usplus_0/axis_tx]
   connect_bd_intf_net -intf_net s_axis_tx_1 [get_bd_intf_ports s_axis_tx] [get_bd_intf_pins axis_clock_converter_tx_0/S_AXIS]
   connect_bd_net -net xlconstant_0_dout [get_bd_pins axis_clock_converter_tx_0/s_axis_aresetn] [get_bd_pins xlconstant_0/dout]
+  connect_bd_net -net util_vector_logic_1_Res [get_bd_pins axis_data_fifo_1/s_axis_aresetn] [get_bd_pins util_vector_logic_1/Res]
 
 assign_bd_address
 regenerate_bd_layout
