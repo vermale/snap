@@ -42,7 +42,7 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 
 	while (packet_in.exit == 0) {
 
-		//Loop_good_packet: while ((packet_in.exit == 0) && (packet_in.axis_packet == 0)) {
+		Loop_good_packet: while ((packet_in.exit == 0) && (packet_in.axis_packet == 0)) {
 
 			// TODO: accounting which packets were converted
 #pragma HLS PIPELINE II=129
@@ -58,7 +58,7 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 			ap_uint<8> eth_packet0 = packet_in.eth_packet;
 
 			ap_uint<28> hbm_cell_addr = (packet_in.frame_number / 2) * NMODULES + packet_in.module;
-			ap_uint<8> hbm_bit_addr = (packet_in.frame_number % 2) *128 + packet_in.eth_packet;
+			ap_uint<8> hbm_bit_addr = (packet_in.frame_number % 2) * ((ap_uint<8>) 128) + packet_in.eth_packet % 128;
 
 			if (hbm_cache_addr[packet_in.module] != hbm_cell_addr) {
 				d_hbm_stat[hbm_cache_addr[packet_in.module]] = hbm_cache[packet_in.module];
@@ -80,6 +80,8 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 				for (int i = 0; i < NMODULES; i++) {
 					statistics(64 + i * 32 + 31, 64 + i * 32) = head[i];
 				}
+				statistics(96 + 32 * NMODULES + 31, 96 + 32 * NMODULES) = hbm_cell_addr;
+				statistics(96 + 32 * NMODULES + 39, 96 + 32 * NMODULES + 32) = hbm_bit_addr;
 
 				// Status info is filled only every NMODULES frames, but interleaved between modules.
 				if (packet_in.frame_number % (NMODULES) == packet_in.module)
@@ -102,10 +104,10 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 			} else counter_wrong++;
 
 			in.read(packet_in);
-		//}
+		}
 		// forward, to get to a beginning of a meaningful packet:
-		//Loop_err_packet: while ((packet_in.exit == 0) && (packet_in.axis_packet != 0))
-		//	in.read(packet_in);
+		Loop_err_packet: while ((packet_in.exit == 0) && (packet_in.axis_packet != 0))
+			in.read(packet_in);
 	}
 	ap_uint<512> statistics = 0;
 

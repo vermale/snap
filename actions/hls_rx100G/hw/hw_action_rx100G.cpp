@@ -145,31 +145,35 @@ void collect_data(AXI_STREAM &din_eth,
 		snap_HBMbus_t *d_hbm_p6, snap_HBMbus_t *d_hbm_p7,
 		snap_HBMbus_t *d_hbm_p8, snap_HBMbus_t *d_hbm_p9,
 		snap_HBMbus_t *d_hbm_p10, snap_HBMbus_t *d_hbm_p11,
-		conversion_settings_t conversion_settings) {
+		conversion_settings_t conversion_settings, ap_uint<2> select_output) {
 
 #pragma HLS DATAFLOW
 	DATA_STREAM raw;
-	DATA_STREAM filtered_raw;
-	DATA_STREAM_FOR_CONVERSION for_conversion1;
-	DATA_STREAM_FOR_CONVERSION for_conversion2;
+	DATA_STREAM after_pedeG0;
+	DATA_STREAM after_gainG0;
+	DATA_STREAM after_correctG1;
+	DATA_STREAM after_correctG2;
 	DATA_STREAM converted;
 
-#pragma HLS STREAM variable=filtered_raw depth=64
-#pragma HLS RESOURCE core=FIFO_LUTRAM variable=filtered_raw
-#pragma HLS STREAM variable=converted depth=128
-#pragma HLS RESOURCE core=FIFO_LUTRAM variable=converted
+#pragma HLS STREAM variable=raw depth=512
+#pragma HLS STREAM variable=after_gainG0 depth=512
+#pragma HLS STREAM variable=after_correctG1 depth=512
+#pragma HLS STREAM variable=after_correctG2 depth=512
 
+	// 1. Read packet from 100G Ethernet
 	read_eth_packet(din_eth, raw, eth_settings, d_hbm_p10);
-	filter_packets(raw, filtered_raw);
-	fetch_constants1(filtered_raw, for_conversion1,
-			d_hbm_p0, d_hbm_p1,
-			d_hbm_p2, d_hbm_p3,
-			d_hbm_p4, d_hbm_p5);
-	fetch_constants2(for_conversion1, for_conversion2,
-			d_hbm_p6, d_hbm_p7,
-			d_hbm_p8, d_hbm_p9);
-	convert_data(for_conversion2, converted,
-			conversion_settings);
+	// 2. Update pedestal (for any gain) and apply G0 pedestal
+	pedestalG0(raw, after_pedeG0, conversion_settings);
+	// 3. Apply gain correction to G0 pixels
+	gainG0(after_pedeG0, after_gainG0, d_hbm_p0, d_hbm_p1);
+	// 4. Apply gain and pedestal corrections for G1 pixels
+	correctG1(after_gainG0, after_correctG1, d_hbm_p2, d_hbm_p3, d_hbm_p6, d_hbm_p7);
+	// 5. Apply gain and pedestal corrections for G2 pixels
+	correctG2(after_correctG1, after_correctG2, d_hbm_p4, d_hbm_p5, d_hbm_p8, d_hbm_p9);
+	// TODO: 6. Take care of special values (overload, error)
+	// 7. Replace raw data with converted data in the stream
+	merge_converted_stream(after_correctG2, converted, select_output);
+	// 8. Write raw or converted data to host memory
 	write_data(converted, dout_gmem, out_frame_buffer_addr, out_frame_status_addr, d_hbm_p11);
 }
 
@@ -239,6 +243,10 @@ static int process_action(snap_membus_t *din_gmem,
 		break;
 	}
 
+	ap_uint<2> output_type;
+	if (conversion_settings.conversion_mode == MODE_CONV) output_type = OUTPUT_CONV_BSHUF;
+	else output_type = OUTPUT_RAW;
+
 	// Run data collection
 	collect_data(din_eth, eth_settings, dout_gmem, out_frame_buffer_addr, out_frame_status_addr,
 			d_hbm_p0, d_hbm_p1,
@@ -247,7 +255,7 @@ static int process_action(snap_membus_t *din_gmem,
 			d_hbm_p6, d_hbm_p7,
 			d_hbm_p8, d_hbm_p9,
 			d_hbm_p10, d_hbm_p11,
-			conversion_settings);
+			conversion_settings, output_type);
 
 	// Save calculated pedestal back to memory
 	switch (conversion_settings.conversion_mode) {
@@ -290,11 +298,11 @@ void hls_action(snap_membus_t *din_gmem, snap_membus_t *dout_gmem,
 {
 	// Host Memory AXI Interface - CANNOT BE REMOVED - NO CHANGE BELOW
 #pragma HLS INTERFACE m_axi port=din_gmem bundle=host_mem offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64
+		max_read_burst_length=64  max_write_burst_length=64 latency=16
 #pragma HLS INTERFACE s_axilite port=din_gmem bundle=ctrl_reg offset=0x030
 
 #pragma HLS INTERFACE m_axi port=dout_gmem bundle=host_mem offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64
+		max_read_burst_length=64  max_write_burst_length=64 latency=16
 #pragma HLS INTERFACE s_axilite port=dout_gmem bundle=ctrl_reg offset=0x040
 
 	/*  // DDR memory Interface - CAN BE COMMENTED IF UNUSED
@@ -353,20 +361,23 @@ void hls_action(snap_membus_t *din_gmem, snap_membus_t *dout_gmem,
 		return;
 		break;
 	default:
-		// Ethernet IP needs to be restarted before action processing starts
-		reset_ethernet_mac: {
+		eth_reset = 0;
+		if (act_reg->Data.mode != MODE_RESET) {
+			process_action(din_gmem, dout_gmem, d_hbm_p0, d_hbm_p1, d_hbm_p2, d_hbm_p3, d_hbm_p4, d_hbm_p5, d_hbm_p6, d_hbm_p7, d_hbm_p8, d_hbm_p9, d_hbm_p10, d_hbm_p11, din_eth, dout_eth, act_reg);
+		} else
+		{
 #pragma HLS PROTOCOL fixed
+			// Restart Ethernet IP to clear buffers
+			// Need to do it separately, as 100G becomes inactive for some time after reset
 			eth_reset = 1;
 			int i = 0;
-			while (i < 16) {
+			// Roughly 100 ms - should be enough to clear buffer
+			while (i < 20000) {
 				i++;
 				ap_wait();
 			}
-			if (i == 16) eth_reset = 0;
+			if (i == 20000) eth_reset = 0;
 		}
-		/* process_action(din_gmem, dout_gmem, d_ddrmem, act_reg); */
-		// process_action(din_gmem, dout_gmem, din_eth, dout_eth, act_reg);
-		process_action(din_gmem, dout_gmem, d_hbm_p0, d_hbm_p1, d_hbm_p2, d_hbm_p3, d_hbm_p4, d_hbm_p5, d_hbm_p6, d_hbm_p7, d_hbm_p8, d_hbm_p9, d_hbm_p10, d_hbm_p11, din_eth, dout_eth, act_reg);
 		break;
 	}
 }

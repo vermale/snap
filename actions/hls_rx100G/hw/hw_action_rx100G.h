@@ -25,12 +25,16 @@
 #include "hls_snap.H"
 #include "../include/action_rx100G.h" /* HelloWorld Job definition */
 
+#define OUTPUT_RAW        0
+#define OUTPUT_CONV       1
+#define OUTPUT_CONV_BSHUF 2
+
 #define PEDE_G0_PRECISION 24
 #define PEDESTAL_WINDOW_SIZE 128
 
 //--------------------------------------------------------------------
 // 1: simplify the data casting style
-#define RELEASE_LEVEL		0x00000004
+#define RELEASE_LEVEL		0x00000005
 
 typedef char word_t[BPERDW];
 
@@ -67,6 +71,7 @@ typedef hls::stream<ap_axiu_for_eth> AXI_STREAM;
 
 struct data_packet_t {
 	ap_uint<512> data;
+    ap_uint<18*32> conv_data;
 	ap_uint<24> frame_number; // allowing 16 million frames or 2.5h at 2 kHz
 	ap_uint<4> module; // 0..16
 	ap_uint<8> eth_packet; // 0..128
@@ -77,29 +82,6 @@ struct data_packet_t {
 };
 
 typedef hls::stream<data_packet_t> DATA_STREAM;
-
-struct data_packet_for_conversion_t {
-	ap_uint<512> data;
-	ap_uint<24> frame_number; // allowing 16 million frames or 2.5h at 2 kHz
-	ap_uint<4> module; // 0..16
-	ap_uint<8> eth_packet; // 0..128
-	ap_uint<8> axis_packet; // 0..128
-    ap_uint<1> axis_user; // TUSER from AXIS
-    ap_uint<1> exit; // exit
-    ap_uint<1> trigger; // debug flag on
-    ap_uint<256> packed_gainG0_1;
-    ap_uint<256> packed_gainG0_2;
-    ap_uint<256> packed_pedeG1_1;
-    ap_uint<256> packed_pedeG1_2;
-    ap_uint<256> packed_gainG1_1;
-    ap_uint<256> packed_gainG1_2;
-    ap_uint<256> packed_pedeG2_1;
-    ap_uint<256> packed_pedeG2_2;
-    ap_uint<256> packed_gainG2_1;
-    ap_uint<256> packed_gainG2_2;
-};
-
-typedef hls::stream<data_packet_for_conversion_t> DATA_STREAM_FOR_CONVERSION;
 
 struct eth_settings_t {
 	uint64_t frame_number_to_stop;
@@ -176,44 +158,15 @@ void read_eth_packet(AXI_STREAM &deth_in, DATA_STREAM &raw_out, eth_settings_t e
 
 void filter_packets(DATA_STREAM &in, DATA_STREAM &out);
 
-void fetch_constants1(DATA_STREAM &in, DATA_STREAM_FOR_CONVERSION &out,
-		snap_HBMbus_t *d_hbm_p0, snap_HBMbus_t *d_hbm_p1,
-		snap_HBMbus_t *d_hbm_p2, snap_HBMbus_t *d_hbm_p3,
-		snap_HBMbus_t *d_hbm_p4, snap_HBMbus_t *d_hbm_p5);
-
-void fetch_constants2(DATA_STREAM_FOR_CONVERSION &in, DATA_STREAM_FOR_CONVERSION &out,
-		snap_HBMbus_t *d_hbm_p6, snap_HBMbus_t *d_hbm_p7,
-		snap_HBMbus_t *d_hbm_p8, snap_HBMbus_t *d_hbm_p9);
-
-void convert_data(DATA_STREAM_FOR_CONVERSION &in, DATA_STREAM &out, conversion_settings_t conversion_settings);
-
-void convert_data(DATA_STREAM &in, DATA_STREAM &out,
-		snap_HBMbus_t *d_hbm_p0, snap_HBMbus_t *d_hbm_p1,
-		snap_HBMbus_t *d_hbm_p2, snap_HBMbus_t *d_hbm_p3,
-		snap_HBMbus_t *d_hbm_p4, snap_HBMbus_t *d_hbm_p5,
-		snap_HBMbus_t *d_hbm_p6, snap_HBMbus_t *d_hbm_p7,
-		snap_HBMbus_t *d_hbm_p8, snap_HBMbus_t *d_hbm_p9,
-		conversion_settings_t conversion_settings);
-
-
+void pedestalG0(DATA_STREAM &in, DATA_STREAM &out, conversion_settings_t conversion_settings);
+void gainG0(DATA_STREAM &in, DATA_STREAM &out, snap_HBMbus_t *d_hbm_p0, snap_HBMbus_t *d_hbm_p1);
+void correctG1(DATA_STREAM &in, DATA_STREAM &out, snap_HBMbus_t *d_hbm_p0, snap_HBMbus_t *d_hbm_p1,
+		snap_HBMbus_t *d_hbm_p2, snap_HBMbus_t *d_hbm_p3);
+void correctG2(DATA_STREAM &in, DATA_STREAM &out, snap_HBMbus_t *d_hbm_p0, snap_HBMbus_t *d_hbm_p1,
+		snap_HBMbus_t *d_hbm_p2, snap_HBMbus_t *d_hbm_p3);
+void merge_converted_stream(DATA_STREAM &in, DATA_STREAM &out, ap_uint<2> output_type);
 void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem,
 		size_t out_frame_buffer_addr, size_t out_frame_status_addr, snap_HBMbus_t *d_hbm_stat);
-
-void pedestal_update(ap_uint<512> data_in, packed_pedeG0_t& packed_pede, ap_uint<32> &mask, ap_uint<2> exp_gain, uint64_t frame_number);
-
-void convert_and_shuffle(ap_uint<512> data_in, ap_uint<512> &data_out,
-		packed_pedeG0_t& packed_pedeG0,
-		ap_uint<256> packed_gainG0_1, ap_uint<256> packed_gainG0_2,
-		ap_uint<256> packed_pedeG1_1, ap_uint<256> packed_pedeG1_2,
-		ap_uint<256> packed_gainG1_1, ap_uint<256> packed_gainG1_2,
-		ap_uint<256> packed_pedeG2_1, ap_uint<256> packed_pedeG2_2,
-		ap_uint<256> packed_gainG2_1, ap_uint<256> packed_gainG2_2,
-		const ap_uint<8> mode);
-
-void convert_and_shuffle(ap_uint<512> data_in, ap_uint<512>& data_out,
-		packed_pedeG0_t& packed_pedeG0, ap_uint<512> packed_pedeG0RMS, ap_uint<512> packed_gainG0,
-		ap_uint<512> packed_pedeG1, ap_uint<512> packed_gainG1,
-		ap_uint<512> packed_pedeG2, ap_uint<512> packed_gainG2);
 
 extern packed_pedeG0_t packed_pedeG0[NMODULES * 512 * 1024 / 32];
 

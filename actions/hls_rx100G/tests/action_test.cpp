@@ -5,7 +5,7 @@
 #include "snap_hls_if.h"
 #include "bitshuffle_core.h"
 
-#define NFRAMES 10
+#define NFRAMES 1
 #define MODULE 0
 
 struct frame_header_t {
@@ -81,12 +81,18 @@ void make_packet(AXI_STREAM &din_eth, uint64_t frame_number, uint32_t eth_packet
 	packet->ipv4_header_h = 0x45; // Big endian in IP header!
     packet->ipv4_header_total_length = 0x4C20; // Big endian in IP header!
 	packet->ipv4_header_dest_ip = 0x0532010A; // Big endian in IP header!
+
+	if (eth_packet > 63)
+		packet->ipv4_header_sour_ip = 0x0632010A;
+	else
+		packet->ipv4_header_sour_ip = 0x0732010A;
+
 	packet->ipv4_header_ttl_protocol = 0x1100;
 	packet->udp_dest_port = MODULE + 0xC0CC; // module number
 	packet->udp_sour_port = 0xACDF;
 	packet->timestamp = 0xA0A0A0A0;
 	packet->framenum = frame_number;
-	packet->packetnum = eth_packet;
+	packet->packetnum = eth_packet % 64;
 
 	for (int i = 0; i < 4096; i++) packet->data[i] = data[i];
 
@@ -243,9 +249,9 @@ int main(int argc, char *argv[]) {
 		double mean_error = 0.0;
 		for (int i = 0; i < NFRAMES; i++) {
 			for (int j = 0; j < NCH; j++) {
-				if (!((frame_converted[i*NCH+j]  - out_frame_buffer_unshuf[i*NMODULES*NCH+j+MODULE*NCH] > 20000) || (frame_converted[i*NCH+j]  - out_frame_buffer_unshuf[i*NMODULES*NCH+j+MODULE*NCH] < -20000)))
+				if (!((frame_converted[i*NCH+j]  - out_frame_buffer_unshuf[i*NMODULES*NCH+j+MODULE*NCH] > 20000) || (frame_converted[i*NCH+j]  - out_frame_buffer_unshuf[i*NMODULES*NCH+j+MODULE*NCH] < -20000))) {
 					mean_error += (frame_converted[i*NCH+j] - out_frame_buffer_unshuf[i*NMODULES*NCH+j+MODULE*NCH])*(frame_converted[i*NCH+j] - out_frame_buffer_unshuf[i*NMODULES*NCH+j+MODULE*NCH]);
-
+				}
 			}
 		}
 		mean_error = sqrt(mean_error/ (NFRAMES*NCH));
@@ -261,8 +267,8 @@ int main(int argc, char *argv[]) {
 			}
 		}
 	}
-	__hexdump(stdout, out_frame_buffer, 16*64);
-	__hexdump(stdout, frame, 16*64);
+	//__hexdump(stdout, out_frame_buffer, 16*64);
+	//__hexdump(stdout, frame, 16*64);
 	__hexdump(stdout, out_frame_buffer_unshuf, 16*64);
 	__hexdump(stdout, frame_converted, 16*64);
 

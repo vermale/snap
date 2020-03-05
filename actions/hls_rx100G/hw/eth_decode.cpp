@@ -172,24 +172,29 @@ void read_eth_packet(AXI_STREAM &in, DATA_STREAM &out, eth_settings_t eth_settin
 		case RCV_JF_HEADER:
 			decode_eth_2(packet_in.data, header);
 			packet_out.frame_number = header.jf_frame_number;
-			packet_out.eth_packet = header.jf_packet_number;
+
+			// Even IP = second interface
+			if (header.ipv4_source_ip % 2 == 0) packet_out.eth_packet = header.jf_packet_number + 64;
+			else packet_out.eth_packet = header.jf_packet_number;
+
 			packet_out.module = header.udp_dest_port % NMODULES;
 			packet_out.trigger = header.jf_debug[31];
 
 			// First AXI-stream packet contains only 303-bits of frame payload, so there is a need to align
 			packet_out.data(303,0) = packet_in.data(511, 208);
 
-			// For 0th package, part of JF header is saved
-			if (header.jf_packet_number == (128 / NMODULES) * packet_out.module) {
+			// For each packet, part of JF header is saved
+			if (packet_out.eth_packet == ((128 / NMODULES) * packet_out.module + packet_out.frame_number) % 128) {
 				ap_uint<28> hbm_addr = header.jf_frame_number * NMODULES + (packet_out.module);
 				ap_uint<256> save_to_memory;
-				save_to_memory(63,0)    = header.jf_frame_number;
+				save_to_memory(31,0)    = header.jf_frame_number;
+				save_to_memory(63,32)   = header.jf_packet_number;
 				save_to_memory(79,64)   = header.udp_src_port;
 				save_to_memory(95,80)   = header.udp_dest_port;
 				save_to_memory(127,96)  = header.jf_debug;
 				save_to_memory(191,128) = header.jf_timestamp;
 				save_to_memory(255,192) = header.jf_bunch_id;
-				d_hbm_header[hbm_addr] = save_to_memory;
+				d_hbm_header[hbm_addr]  = save_to_memory;
 			}
 
 			rcv_state = RCV_GOOD;
