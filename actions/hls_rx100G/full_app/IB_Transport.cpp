@@ -98,15 +98,20 @@ int switch_to_rtr(uint32_t rq_psn, uint16_t dlid, uint32_t dest_qp_num) {
 	struct ibv_qp_attr qp_attr;
 	memset(&qp_attr, 0, sizeof(qp_attr));
 	qp_attr.qp_state           = IBV_QPS_RTR;
-	qp_attr.path_mtu           = IBV_MTU_2048;
+	qp_attr.path_mtu           = IBV_MTU_256;
 	qp_attr.dest_qp_num        = dest_qp_num;
 	qp_attr.rq_psn             = rq_psn;
 	qp_attr.max_dest_rd_atomic = 1;
 	qp_attr.min_rnr_timer      = 12; // recommended from Mellanox
 	qp_attr.ah_attr.dlid       = dlid;
+        qp_attr.ah_attr.port_num   = 1;
 	int ret = ibv_modify_qp(ib_qp, &qp_attr, qp_flags);
+
 	if (ret) {
-		std::cerr << "Failed to set IB queue pair to ready to receive" << std::endl;
+		std::cerr << "Failed to set IB queue pair to ready to receive " << ret << std::endl;
+		std::cerr << "PSN: " << rq_psn << " Dest DLID: " << dlid << " Dest QP: " << dest_qp_num << std::endl;
+		std::cerr << "PSN: " << rq_psn << " Own  DLID: " << ib_port_attr.lid << " Own  QP: " << ib_qp->qp_num << std::endl;
+		return 1;
 	}
 	return 0;	
 }
@@ -132,6 +137,7 @@ int switch_to_rts(uint32_t sq_psn) {
 	
 	if (ret) {
 		std::cerr << "Failed to set IB queue pair to ready to send" << std::endl;
+		return 1;
 	}
 	return 0;
 }

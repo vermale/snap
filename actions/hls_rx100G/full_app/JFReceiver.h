@@ -9,8 +9,9 @@
 
 #include "../include/action_rx100G.h"
 
-#define RDMA_BUFFER_MAX_ELEM_SIZE LZ4_compressBound(NPIXEL * 2)
-#define RDMA_SQ_SIZE 512L // Maximum receive ring length without processing
+#define RECEIVING_DELAY 5
+#define RDMA_BUFFER_MAX_ELEM_SIZE (LZ4_compressBound(NPIXEL * 2) + 8)
+#define RDMA_SQ_SIZE 8192L // Maximum receive ring length without processing
 
 #define PTHREAD_ERROR(ret,func) if (ret) printf("%s(%d) %s: err = %d\n",__FILE__,__LINE__, #func, ret), exit(ret)
 
@@ -28,9 +29,12 @@ extern uint8_t  conversion_mode;
 extern uint64_t fpga_mac_addr;
 extern uint64_t fpga_ip_addr;
 
+// Experimental info
+extern double energy_in_keV;
+
 // File paths
 extern std::string gainFileName[NMODULES];
-extern std::string pedestalFileName[NMODULES];
+extern std::string pedestalFileName;
 
 // Buffers size
 extern size_t frame_buffer_size;
@@ -49,7 +53,7 @@ extern char *packet_counter;
 extern char *ib_outgoing_buffer;
 
 // IB data structures
-
+extern ibv_mr *ib_outgoing_buffer_mr;
 
 struct ThreadArg {
 	uint16_t ThreadID;

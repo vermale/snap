@@ -1,3 +1,4 @@
+#include <fstream>
 #include <iostream>
 #include <infiniband/verbs.h>
 #include <cstdlib>
@@ -48,29 +49,86 @@ void deallocate_memory() {
     munmap(status_buffer, status_buffer_size);
     munmap(gain_pedestal_data, gain_pedestal_data_size);
     munmap(jf_packet_headers, jf_packet_headers_size);
+    munmap(ib_outgoing_buffer, ib_outgoing_buffer_size);
 }
 
+void load_bin_file(std::string fname, char *dest, size_t size) {
+	std::cout << "Loading " << fname.c_str() << std::endl;
+	std::fstream file10(fname.c_str(), std::fstream::in | std::fstream::binary);
+	if (!file10.is_open()) {
+		std::cerr << "Error opening file " << fname.c_str() << std::endl;
+	} else {
+		file10.read(dest, size);
+		file10.close();
+	}
+}
 
+void load_gain(std::string fname, int module, double energy_in_keV) {
+	double *tmp_gain = (double *) calloc (3 * MODULE_COLS * MODULE_LINES, sizeof(double));
+	load_bin_file(fname, (char *) tmp_gain, 3 * MODULE_COLS * MODULE_LINES * sizeof(double));
+
+	size_t offset = module * MODULE_COLS * MODULE_LINES;
+
+	// 14-bit fractional part
+	for (int i = 0; i < MODULE_COLS * MODULE_LINES; i ++)
+		gain_pedestal_data[offset+i] =  (uint16_t) ((512.0 / (tmp_gain[i] * energy_in_keV)) * 16384 + 0.5);
+
+	// 13-bit fractional part
+	offset += NPIXEL;
+	for (int i = 0; i < MODULE_COLS * MODULE_LINES; i ++)
+		gain_pedestal_data[offset+i] =  (uint16_t) (-1.0 / ( tmp_gain[i + MODULE_COLS * MODULE_LINES] * energy_in_keV) * 8192 + 0.5);
+
+	// 13-bit fractional part
+	offset += NPIXEL;
+	for (int i = 0; i < MODULE_COLS * MODULE_LINES; i ++)
+		gain_pedestal_data[offset+i] =  (uint16_t) (-1.0 / ( tmp_gain[i + 2 * MODULE_COLS * MODULE_LINES] * energy_in_keV) * 8192 + 0.5);
+
+	free(tmp_gain);
+}
+
+void load_pedestal(std::string fname) {
+	load_bin_file(fname, (char *)(gain_pedestal_data + 3 * NPIXEL), 3 * NPIXEL * sizeof(uint16_t));
+}
+
+void save_pedestal(std::string fname) {
+	std::cout << "Loading " << fname.c_str() << std::endl;
+	std::fstream file10(fname.c_str(), std::ios::out | std::ios::binary);
+	if (!file10.is_open()) {
+		std::cerr << "Error opening file " << fname.c_str() << std::endl;
+	} else {
+		file10.write((char *) (gain_pedestal_data + 3 * NPIXEL), 3 * NPIXEL * sizeof(uint16_t));
+		file10.close();
+	}
+}
 
 int main(int argc, char **argv) {
     int ret;
 
+    nframes_to_write = 50;
+    compression_threads = 2;
+
     std::cout << "JF Receiver " << std::endl;
+    std::cout << "Frames to write " << nframes_to_write << " compression threads " << compression_threads << std::endl;
     // Parse input parameters
 
     // Allocate memory
     if (allocate_memory() == 1) exit(EXIT_FAILURE);
     std::cout << "Memory allocated" << std::endl; 
 
-    // Load gain and pedestal data
+    // Load gain files (double, per module)
+    for (int i = 0; i < NMODULES; i++)
+    	load_gain(gainFileName[i], i, energy_in_keV);
+
+    // Load pedestal file
+    load_pedestal(pedestalFileName);
 
     // Establish RDMA link
     if (setup_ibverbs("mlx5_0", RDMA_SQ_SIZE, 0) == 1) exit(EXIT_FAILURE);
     std::cout << "IB link ready" << std::endl; 
 
     // Register memory regions
-    ibv_mr *ib_incoming_buffer_mr = ibv_reg_mr(ib_pd, ib_outgoing_buffer, ib_outgoing_buffer_size, 0);
-    if (ib_incoming_buffer_mr == NULL) {
+    ib_outgoing_buffer_mr = ibv_reg_mr(ib_pd, ib_outgoing_buffer, ib_outgoing_buffer_size, 0);
+    if (ib_outgoing_buffer_mr == NULL) {
     	std::cerr << "Failed to register IB memory region." << std::endl;
     	return 1;
     }
@@ -86,13 +144,17 @@ int main(int argc, char **argv) {
 //    ret = pthread_create(&snapThread1, NULL, SnapThread, NULL);
 //    PTHREAD_ERROR(ret,pthread_create);
 
+    for (int i = 0; i < NMODULES; i++) {
+    	online_statistics->head[i] = nframes_to_write + 10;
+    }
+
     pthread_t compressionThread[compression_threads];
     ThreadArg args[compression_threads];
 
     for (int i = 0; i < compression_threads ; i++) {
         args[i].ThreadID = i;
-//        ret = pthread_create(&compressionThread[i], NULL, CompressAndSendThread, &args[i]);
-//        PTHREAD_ERROR(ret,pthread_create);
+        ret = pthread_create(&compressionThread[i], NULL, CompressAndSendThread, &args[i]);
+        PTHREAD_ERROR(ret,pthread_create);
     }
 
     uint16_t remote_dlid;
@@ -112,20 +174,21 @@ int main(int argc, char **argv) {
 //    ret = pthread_join(snapThread1, NULL);
 //    PTHREAD_ERROR(ret,pthread_join);
 
-//    for	(int i = 0; i <	compression_threads ; i++) {
-//        ret = pthread_join(compressionThread[i], NULL);
-//        PTHREAD_ERROR(ret,pthread_join);
-//    }
+    for	(int i = 0; i <	compression_threads ; i++) {
+        ret = pthread_join(compressionThread[i], NULL);
+        PTHREAD_ERROR(ret,pthread_join);
+    }
 
     // Send pedestal, header data and collection statistics
 
     // Save pedestal
+    save_pedestal(pedestalFileName);
 
     // Print statistics
     std::cout << "Data received: " << ((double) online_statistics->good_packets) / (128.0 * NMODULES * nframes_to_collect) << "%" << std::endl;
 
     // Deregister memory region
-    ibv_dereg_mr(ib_incoming_buffer_mr);
+    ibv_dereg_mr(ib_outgoing_buffer_mr);
     ibv_dereg_mr(ib_status_buffer_mr);
 
     // Close RDMA
