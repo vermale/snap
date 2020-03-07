@@ -24,14 +24,14 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 	int counter_wrong = 0;
 
 	ap_uint<256> hbm_cache[NMODULES]; // Cache for HBM statistics
-	ap_uint<28> hbm_cache_addr[NMODULES];
+	uint32_t hbm_cache_addr[NMODULES];
 #pragma HLS RESOURCE core=RAM_1P_LUTRAM variable=hbm_cache
 #pragma HLS RESOURCE core=RAM_1P_LUTRAM variable=hbm_cache_addr
 	for (int i = 0; i < NMODULES; i++) {
 #pragma HLS UNROLL
 		hbm_cache[i] = 0;
 		hbm_cache_addr[i] = i;
-	}
+}
 
 	ap_uint<24> head[NMODULES]; // number of the newest packet received for the frame
 #pragma HLS RESOURCE variable=head core=RAM_1P_LUTRAM
@@ -57,13 +57,14 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 			ap_uint<4> module0 = packet_in.module;
 			ap_uint<8> eth_packet0 = packet_in.eth_packet;
 
-			ap_uint<28> hbm_cell_addr = (packet_in.frame_number / 2) * NMODULES + packet_in.module;
-			ap_uint<8> hbm_bit_addr = (packet_in.frame_number % 2) * ((ap_uint<8>) 128) + packet_in.eth_packet % 128;
+			uint32_t hbm_cell_addr = (packet_in.frame_number / 2) * NMODULES + packet_in.module;
+			uint32_t hbm_bit_addr = eth_packet0;
+			if (frame_number0 % 2 == 1) hbm_bit_addr += 128;
 
 			if (hbm_cache_addr[packet_in.module] != hbm_cell_addr) {
-				d_hbm_stat[hbm_cache_addr[packet_in.module]] = hbm_cache[packet_in.module];
-				hbm_cache_addr[packet_in.module] = hbm_cell_addr;
-				hbm_cache[packet_in.module] = d_hbm_stat[hbm_cell_addr];
+							memcpy(d_hbm_stat + hbm_cache_addr[packet_in.module], hbm_cache + packet_in.module, 32);
+							hbm_cache_addr[packet_in.module] = hbm_cell_addr;
+							memcpy(hbm_cache + packet_in.module, d_hbm_stat + hbm_cell_addr, 32);
 			}
 
 			if (packet_in.frame_number > head[packet_in.module]) {
@@ -99,7 +100,7 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 			memcpy(dout_gmem + out_frame_addr, buffer, 128*64);
 
 			if ((packet_in.axis_packet == 127) && (packet_in.axis_user == 0)) {
-				hbm_cache[module0][hbm_bit_addr] = 1;
+				(hbm_cache[module0])[hbm_bit_addr] = 1;
 				counter_ok++;
 			} else counter_wrong++;
 
@@ -109,11 +110,13 @@ void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem, size_t out_frame_buff
 		Loop_err_packet: while ((packet_in.exit == 0) && (packet_in.axis_packet != 0))
 			in.read(packet_in);
 	}
-	ap_uint<512> statistics = 0;
 
 	for (int i = 0; i < NMODULES; i++)
-		d_hbm_stat[hbm_cache_addr[i]] = hbm_cache[i];
+		memcpy(d_hbm_stat + hbm_cache_addr[i], hbm_cache + i, 32);
 
+
+
+	ap_uint<512> statistics = 0;
 
 	statistics(31,0) = counter_ok;
 	statistics(63,32) = counter_wrong;

@@ -5,7 +5,7 @@
 #include "snap_hls_if.h"
 #include "bitshuffle_core.h"
 
-#define NFRAMES 1
+#define NFRAMES 10
 #define MODULE 0
 
 struct frame_header_t {
@@ -127,22 +127,22 @@ void load_gain(void *in_gain, std::string fname, int module, double energy_in_ke
 
 	loadBinFile(fname, (char *) tmp_gain, 3 * MODULE_COLS * MODULE_LINES * sizeof(double));
 
-	gainG0_t   *in_gain_in_G0   = (gainG0_t *)   in_gain;
-	gainG1G2_t *in_gain_in_G1G2 = (gainG1G2_t *) in_gain;
+	uint16_t   *in_gain_in_u16   = (uint16_t *)   in_gain;
+
 	size_t offset = module * MODULE_COLS * MODULE_LINES;
 
 	for (int i = 0; i < MODULE_COLS * MODULE_LINES; i ++) {
-		in_gain_in_G0[offset+i] =  (gainG0_t) (512.0 / ( tmp_gain[i] * energy_in_keV));
+		in_gain_in_u16[offset+i] =  (uint16_t) ((512.0 / (tmp_gain[i] * energy_in_keV)) * 16384 + 0.5);
 	}
 
 	offset += NPIXEL;
 	for (int i = 0; i < MODULE_COLS * MODULE_LINES; i ++) {
-		in_gain_in_G1G2[offset+i] =  (gainG1G2_t) (-1.0 / ( tmp_gain[i + MODULE_COLS * MODULE_LINES] * energy_in_keV));
+		in_gain_in_u16[offset+i] =  (uint16_t) (-1.0 / ( tmp_gain[i + MODULE_COLS * MODULE_LINES] * energy_in_keV) * 8192 + 0.5);
 	}
 
 	offset += NPIXEL;
 	for (int i = 0; i < MODULE_COLS * MODULE_LINES; i ++) {
-		in_gain_in_G1G2[offset+i] =  (gainG1G2_t) (-1.0 / ( tmp_gain[i + 2 * MODULE_COLS * MODULE_LINES] * energy_in_keV));
+		in_gain_in_u16[offset+i] =  (uint16_t) (-1.0 / ( tmp_gain[i + 2 * MODULE_COLS * MODULE_LINES] * energy_in_keV) * 8192 + 0.5);
 	}
 
 	free(tmp_gain);
@@ -153,11 +153,11 @@ void load_pedestal(void *in_gain, std::string fname, int module, int array_offse
 
 	loadBinFile(fname, (char *)  tmp_pede, MODULE_COLS * MODULE_LINES * sizeof(float));
 
-	pedeG1G2_t *in_gain_inpede = (pedeG1G2_t *) in_gain;
+	uint16_t *in_gain_in_u16 = (uint16_t *) in_gain;
 	size_t offset = module * MODULE_COLS * MODULE_LINES + array_offset * NPIXEL;
 
 	for (int i = 0; i < MODULE_COLS * MODULE_LINES; i ++) {
-		in_gain_inpede[offset+i] =  tmp_pede[i];
+		in_gain_in_u16[offset+i] =  (uint16_t) (tmp_pede[i] * 4.0 + 0.5);
 
 	}
 	free(tmp_pede);
