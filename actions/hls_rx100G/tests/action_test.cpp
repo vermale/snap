@@ -210,7 +210,7 @@ int main(int argc, char *argv[]) {
 	ap_uint<1> eth_reset;
 
 	action_register.Data.expected_frames = NFRAMES;
-	action_register.Data.mode = MODE_CONV;
+	action_register.Data.mode = MODE_CONV_BSHUF;
 	action_register.Control.flags = 1;
 	action_register.Data.fpga_mac_addr = 0xAABBCCDDEEF1;
 	action_register.Data.fpga_ipv4_addr = 0x0A013205; // 10.1.50.5
@@ -221,11 +221,11 @@ int main(int argc, char *argv[]) {
 	action_register.Data.pedestalG0_frames = 0;
 
 	int16_t *frame = (int16_t *) calloc(MODULE_LINES * MODULE_COLS * NFRAMES, sizeof(uint16_t));
-	int16_t *frame_converted = (int16_t *) calloc(MODULE_LINES * MODULE_COLS * NFRAMES, sizeof(uint16_t));
+	float *frame_converted = (float *) calloc(MODULE_LINES * MODULE_COLS * NFRAMES, sizeof(float));
 
 	for (int i = 0; i < NFRAMES; i++) {
 		loadBinFile("test_data/mod5_raw" + std::to_string(i) + ".bin", (char *)  (frame + NCH * i), MODULE_LINES * MODULE_COLS * sizeof(uint16_t));
-		loadBinFile("test_data/mod5_conv" + std::to_string(i) + ".bin", (char *)  (frame_converted + NCH * i), MODULE_LINES * MODULE_COLS * sizeof(uint16_t));
+		loadBinFile("test_data/mod5_conv" + std::to_string(i) + ".bin", (char *)  (frame_converted + NCH * i), MODULE_LINES * MODULE_COLS * sizeof(float));
 		for (int j = 0; j < 128; j++) {
 			make_packet(din_eth, i+1, j, (uint16_t *) (frame + NCH * i + 4096 * j));
 		}
@@ -245,12 +245,27 @@ int main(int argc, char *argv[]) {
 
 	bshuf_bitunshuffle(out_frame_buffer, out_frame_buffer_unshuf, NFRAMES*NPIXEL, 2, 32);
 
-	if (action_register.Data.mode == MODE_CONV) {
+	if (action_register.Data.mode == MODE_CONV_BSHUF) {
+		double mean_error = 0.0;
+		double bias = 0.0;
+		for (int i = 0; i < NFRAMES; i++) {
+			for (int j = 0; j < NCH; j++) {
+				if (!((frame_converted[i*NCH+j]  - (float)out_frame_buffer_unshuf[i*NMODULES*NCH+j+MODULE*NCH] > 20000) || (frame_converted[i*NCH+j]  - (float)out_frame_buffer_unshuf[i*NMODULES*NCH+j+MODULE*NCH] < -20000))) {
+					mean_error += (frame_converted[i*NCH+j] - (float)out_frame_buffer_unshuf[i*NMODULES*NCH+j+MODULE*NCH])*(frame_converted[i*NCH+j] - (float)out_frame_buffer_unshuf[i*NMODULES*NCH+j+MODULE*NCH]);
+					bias += frame_converted[i*NCH+j] - (float)out_frame_buffer_unshuf[i*NMODULES*NCH+j+MODULE*NCH];
+				}
+			}
+		}
+		mean_error = sqrt(mean_error/ (NFRAMES*NCH));
+		bias = bias / (NFRAMES*NCH);
+		std::cout << "Mean error " << mean_error << " Bias: " << bias << std::endl;
+		if (mean_error > 0.33) retval = 2;
+	} else if (action_register.Data.mode == MODE_CONV) {
 		double mean_error = 0.0;
 		for (int i = 0; i < NFRAMES; i++) {
 			for (int j = 0; j < NCH; j++) {
-				if (!((frame_converted[i*NCH+j]  - out_frame_buffer_unshuf[i*NMODULES*NCH+j+MODULE*NCH] > 20000) || (frame_converted[i*NCH+j]  - out_frame_buffer_unshuf[i*NMODULES*NCH+j+MODULE*NCH] < -20000))) {
-					mean_error += (frame_converted[i*NCH+j] - out_frame_buffer_unshuf[i*NMODULES*NCH+j+MODULE*NCH])*(frame_converted[i*NCH+j] - out_frame_buffer_unshuf[i*NMODULES*NCH+j+MODULE*NCH]);
+				if (!((frame_converted[i*NCH+j]  - out_frame_buffer[i*NMODULES*NCH+j+MODULE*NCH] > 20000) || (frame_converted[i*NCH+j]  - out_frame_buffer[i*NMODULES*NCH+j+MODULE*NCH] < -20000))) {
+					mean_error += (frame_converted[i*NCH+j] - (float)out_frame_buffer[i*NMODULES*NCH+j+MODULE*NCH])*(frame_converted[i*NCH+j] - (float) out_frame_buffer[i*NMODULES*NCH+j+MODULE*NCH]);
 				}
 			}
 		}
