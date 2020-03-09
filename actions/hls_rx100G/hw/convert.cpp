@@ -16,8 +16,7 @@
 
 #include "hw_action_rx100G.h"
 
-#define URAM_PARITITION 8
-#define HBM_BURST_G0 64
+#define URAM_PARITITION 4
 #define HBM_BURST_G1G2 4
 
 void update_pedestal(ap_uint<512> data_in, ap_uint<18*32> &data_out, packed_pedeG0_t &packed_pede, ap_uint<1> accumulate, ap_uint<8> mode) {
@@ -68,7 +67,7 @@ void pedestalG0(DATA_STREAM &in, DATA_STREAM &out, conversion_settings_t convers
 			ap_uint<1> accumulate_pede;
 			if (frame_number < PEDESTAL_WINDOW_SIZE) accumulate_pede = 1;
 			else accumulate_pede = 0;
-#pragma HLS PIPELINE II=8
+#pragma HLS PIPELINE II=4
 			size_t offset = packet_in.module * 128 * 128 + 128 * packet_in.eth_packet + packet_in.axis_packet;
 			for (int i = 0; i < URAM_PARITITION; i++) {
 				// Copy old packet
@@ -85,163 +84,101 @@ void pedestalG0(DATA_STREAM &in, DATA_STREAM &out, conversion_settings_t convers
 	out << packet_in;
 }
 
-void gainG0_correction(ap_uint<32*18> data_in, ap_uint<32*18> &data_out, ap_uint<256> packed_gainG0_1, ap_uint<256> packed_gainG0_2) {
-#pragma HLS PIPELINE II=1
-	gainG0_t gainG0[32];
-	unpack_gainG0 (packed_gainG0_1, packed_gainG0_2, gainG0);
-	for (int j = 0; j < 32; j++) {
-		ap_fixed<18,16> val_diff;
-		ap_fixed<18,16> val_result;
-		// Unpack differences
-		for (int k = 0; k < 18; k++)
-			val_diff[k] = data_in[j * 18 + k];
-		// Multiply by gain factor
-		val_result = val_diff * (gainG0[j] / 512);
+void convert_and_shuffle(ap_uint<512> data_in, ap_uint<512> &data_out,
+		ap_uint<18*32> after_pedeG0,
+		ap_uint<256> packed_gainG0_1, ap_uint<256> packed_gainG0_2,
+		ap_uint<256> packed_gainG1_1, ap_uint<256> packed_gainG1_2,
+		ap_uint<256> packed_gainG2_1, ap_uint<256> packed_gainG2_2,
+		ap_uint<256> packed_pedeG1_1, ap_uint<256> packed_pedeG1_2,
+		ap_uint<256> packed_pedeG2_1, ap_uint<256> packed_pedeG2_2,
+		ap_uint<2> output_mode)
+{
+#pragma HLS PIPELINE
+#pragma HLS INLINE off
+	const ap_fixed<18,16, SC_RND_CONV> half = 0.5f;
 
-		// Write outcome
-		for (int k = 0; k < 18; k++)
-			data_out[j * 18 + k] = val_result[k];
-	}
+	ap_uint<16> in_val[32];
+	ap_int<16> out_val[32];
+	Loop0: for (int i = 0; i < 512; i++) in_val[i/16][i%16] = data_in[i];
 
-}
+	gainG0_t    gainG0[32];
+	pedeG1G2_t  pedeG1[32];
+	pedeG1G2_t  pedeG2[32];
+	gainG1G2_t  gainG1[32];
+	gainG1G2_t  gainG2[32];
 
-void gainG0(DATA_STREAM &in, DATA_STREAM &out, snap_HBMbus_t *d_hbm_p0, snap_HBMbus_t *d_hbm_p1) {
-	data_packet_t packet_in, packet_out;
-	in >> packet_in;
-	while (packet_in.exit == 0) {
-		while ((packet_in.exit == 0) && (packet_in.axis_packet % HBM_BURST_G0 == 0)) {
-#pragma HLS PIPELINE II=4
-			ap_uint<256> packed_gainG0_1[HBM_BURST_G0], packed_gainG0_2[HBM_BURST_G0];
-			size_t offset = packet_in.module * 128 * 128 + 128 * packet_in.eth_packet + packet_in.axis_packet;
-			memcpy(packed_gainG0_1,d_hbm_p0+offset, HBM_BURST_G0*32);
-			memcpy(packed_gainG0_2,d_hbm_p1+offset, HBM_BURST_G0*32);
+	unpack_gainG0  (packed_gainG0_1, packed_gainG0_2, gainG0);
+	unpack_pedeG1G2(packed_pedeG1_1, packed_pedeG1_2, pedeG1);
+	unpack_pedeG1G2(packed_pedeG2_1, packed_pedeG2_2, pedeG2);
+	unpack_gainG1G2(packed_gainG1_1, packed_gainG1_2, gainG1);
+	unpack_gainG1G2(packed_gainG2_1, packed_gainG2_2, gainG2);
 
-			for (int i = 0; i < HBM_BURST_G0; i ++) {
-				packet_out.axis_packet = packet_in.axis_packet;
-				packet_out.axis_user = packet_in.axis_user;
-				packet_out.data = packet_in.data;
-				packet_out.eth_packet = packet_in.eth_packet;
-				packet_out.exit = packet_in.exit;
-				packet_out.frame_number = packet_in.frame_number;
-				packet_out.module = packet_in.module;
-				packet_out.trigger = packet_in.trigger;
-				gainG0_correction(packet_in.conv_data, packet_out.conv_data, packed_gainG0_1[i], packed_gainG0_2[i]);
-				out << packet_out;
-				in >> packet_in;
+	Convert: for (int i = 0; i < 32; i++) {
+
+		if (in_val[i] == 0x3fff) out_val[i] = 32766; // can saturate G2 - overload
+		else if (in_val[i] == 0xffff) out_val[i] = -32763; //error
+		else if (in_val[i] == 0xc000) out_val[i] = -32764; //cannot saturate G1 - error
+		else {
+
+			ap_fixed<18,16, AP_RND_CONV> val_diff;
+			ap_fixed<18,16, AP_RND_CONV> val_result = 0;
+			ap_uint<2> gain = in_val[i] >>14;
+			ap_uint<14> adu = in_val[i]; // take first two bits
+			switch (gain) {
+			case 0: {
+				for (int k = 0; k < 18; k++)
+							val_diff[k] = after_pedeG0[i * 18 + k];
+				val_result = val_diff * (gainG0[i] / 512);
+				//out_val[i] = val_result;
+				if (val_result >= 0)
+					out_val[i] = val_result + half;
+				else  out_val[i] = val_result - half;
+				break;
+			}
+			case 1: {
+				val_diff     = pedeG1[i] - adu;
+				val_result   =  val_diff * gainG1[i];
+				//out_val[i] = val_result;
+				if (val_result >= 0)
+					out_val[i] = val_result + half;
+				else  out_val[i] = val_result - half;
+				break;
+			}
+			case 2:
+				out_val[i] = -32762; // invalid gain
+				break;
+			case 3: {
+				val_diff     = pedeG2[i] - adu;
+				val_result   = val_diff * gainG2[i];
+				//out_val[i] = val_result;
+				if (val_result >= 0)
+					out_val[i] = val_result + half;
+				else  out_val[i] = val_result - half;
+				break;
+			}
 			}
 		}
-		while ((packet_in.exit == 0) && (packet_in.axis_packet % HBM_BURST_G0 != 0)) in >> packet_in;
 	}
-	out << packet_in;
-}
-
-void gainG1_correction(ap_uint<512> data_in, ap_uint<32*18> old_data, ap_uint<32*18> &data_out, ap_uint<256> packed_gain_1, ap_uint<256> packed_gain_2,
-		ap_uint<256> packed_pede_1, ap_uint<256> packed_pede_2) {
-#pragma HLS PIPELINE II=1
-
-	ap_uint<32*18> mask = 0;
-	ap_uint<32*18> new_val = 0;
-
-	gainG1G2_t gainG1G2[32];
-	pedeG1G2_t pedeG1G2[32];
-
-	unpack_gainG1G2 (packed_gain_1, packed_gain_2, gainG1G2);
-	unpack_pedeG1G2 (packed_pede_1, packed_pede_2, pedeG1G2);
-
-	for (int i = 0; i < 32; i++) {
-		ap_uint<2> gain = data_in(16 * i + 15,16 * i + 14);
-		ap_uint<14> adu = data_in(16 * i + 13,16 * i);
-
-		ap_fixed<18,16> val_diff;
-		ap_fixed<18,16> val_result;
-		if (adu == 0x0) val_result = -32768;
-		else if (adu == 0x3fff) val_result = -32768;
-		else
-			val_result = gainG1G2[i] * (pedeG1G2[i] - (pedeG1G2_t)adu);
-		// Write outcome
-		for (int k = 0; k < 18; k++) {
-			if (gain == 0x1)
-				data_out[i * 18 + k] = val_result[k];
-			else data_out[i * 18 + k] = old_data[i* 18 + k];
-		}
-	}
-
-}
-
-void gainG2_correction(ap_uint<512> data_in, ap_uint<32*18> old_data, ap_uint<32*18> &data_out, ap_uint<256> packed_gain_1, ap_uint<256> packed_gain_2,
-		ap_uint<256> packed_pede_1, ap_uint<256> packed_pede_2) {
-#pragma HLS PIPELINE II=1
-
-	ap_uint<32*18> mask = 0;
-	ap_uint<32*18> new_val = 0;
-
-	gainG1G2_t gainG1G2[32];
-	pedeG1G2_t pedeG1G2[32];
-
-	unpack_gainG1G2 (packed_gain_1, packed_gain_2, gainG1G2);
-	unpack_pedeG1G2 (packed_pede_1, packed_pede_2, pedeG1G2);
-
-	for (int i = 0; i < 32; i++) {
-
-		ap_uint<2> gain = data_in(16 * i + 15,16 * i + 14);
-		ap_uint<14> adu = data_in(16 * i + 13,16 * i);
-
-		ap_fixed<18,16> val_result;
-		if (adu == 0x0) val_result = 32768;
-		else if (adu == 0x3fff) val_result = -32768+1;
-		else
-		val_result = gainG1G2[i] * (pedeG1G2[i] - (pedeG1G2_t)adu);
-
-		// Write outcome
-		for (int k = 0; k < 18; k++) {
-			if (gain == 0x3)
-				data_out[i * 18 + k] = val_result[k];
-			else data_out[i * 18 + k] = old_data[i* 18 + k];
-		}
+	switch (output_mode) {
+	case OUTPUT_CONV:
+		data_pack(data_out, out_val);
+		break;
+	case OUTPUT_CONV_BSHUF:
+		data_shuffle(data_out, out_val);
+		break;
+	default:
+		data_out = data_in;
+		break;
 	}
 }
 
-
-void correctG1(DATA_STREAM &in, DATA_STREAM &out, snap_HBMbus_t *d_hbm_p0, snap_HBMbus_t *d_hbm_p1,
-		snap_HBMbus_t *d_hbm_p2, snap_HBMbus_t *d_hbm_p3) {
-	data_packet_t packet_in, packet_out;
-	in >> packet_in;
-	while (packet_in.exit == 0) {
-		while ((packet_in.exit == 0) && (packet_in.axis_packet % HBM_BURST_G1G2 == 0)) {
-#pragma HLS PIPELINE II=4
-			size_t offset = packet_in.module * 128 * 128 + 128 * packet_in.eth_packet + packet_in.axis_packet;
-
-			ap_uint<256> packed_gain_1[HBM_BURST_G1G2], packed_gain_2[HBM_BURST_G1G2];
-			ap_uint<256> packed_pede_1[HBM_BURST_G1G2], packed_pede_2[HBM_BURST_G1G2];
-
-			memcpy(packed_gain_1,d_hbm_p0+offset, HBM_BURST_G1G2*32);
-			memcpy(packed_gain_2,d_hbm_p1+offset, HBM_BURST_G1G2*32);
-			memcpy(packed_pede_1,d_hbm_p2+offset, HBM_BURST_G1G2*32);
-			memcpy(packed_pede_2,d_hbm_p3+offset, HBM_BURST_G1G2*32);
-
-			for (int i = 0; i < HBM_BURST_G1G2; i ++) {
-				packet_out.axis_packet = packet_in.axis_packet;
-				packet_out.axis_user = packet_in.axis_user;
-				packet_out.data = packet_in.data;
-				packet_out.eth_packet = packet_in.eth_packet;
-				packet_out.exit = packet_in.exit;
-				packet_out.frame_number = packet_in.frame_number;
-				packet_out.module = packet_in.module;
-				packet_out.trigger = packet_in.trigger;
-
-				gainG1_correction(packet_in.data, packet_in.conv_data, packet_out.conv_data, packed_gain_1[i], packed_gain_2[i],
-						packed_pede_1[i], packed_pede_2[i]);
-				out << packet_out;
-				in >> packet_in;
-			}
-		}
-		while ((packet_in.exit == 0) && (packet_in.axis_packet % HBM_BURST_G1G2 != 0)) in >> packet_in;
-	}
-	out << packet_in;
-}
-
-void correctG2(DATA_STREAM &in, DATA_STREAM &out, snap_HBMbus_t *d_hbm_p0, snap_HBMbus_t *d_hbm_p1,
-		snap_HBMbus_t *d_hbm_p2, snap_HBMbus_t *d_hbm_p3) {
+void apply_gain_correction(DATA_STREAM &in, DATA_STREAM &out,
+		snap_HBMbus_t *d_hbm_p0, snap_HBMbus_t *d_hbm_p1,
+		snap_HBMbus_t *d_hbm_p2, snap_HBMbus_t *d_hbm_p3,
+		snap_HBMbus_t *d_hbm_p4, snap_HBMbus_t *d_hbm_p5,
+		snap_HBMbus_t *d_hbm_p6, snap_HBMbus_t *d_hbm_p7,
+		snap_HBMbus_t *d_hbm_p8, snap_HBMbus_t *d_hbm_p9,
+	    ap_uint<2> output_mode) {
 	data_packet_t packet_in;
 	in >> packet_in;
 	while (packet_in.exit == 0) {
@@ -249,67 +186,38 @@ void correctG2(DATA_STREAM &in, DATA_STREAM &out, snap_HBMbus_t *d_hbm_p0, snap_
 #pragma HLS PIPELINE II=4
 			size_t offset = packet_in.module * 128 * 128 + 128 * packet_in.eth_packet + packet_in.axis_packet;
 
-			ap_uint<256> packed_gain_1[HBM_BURST_G1G2], packed_gain_2[HBM_BURST_G1G2];
-			ap_uint<256> packed_pede_1[HBM_BURST_G1G2], packed_pede_2[HBM_BURST_G1G2];
+			ap_uint<256> packed_gainG0_1[HBM_BURST_G1G2], packed_gainG0_2[HBM_BURST_G1G2];
+			ap_uint<256> packed_gainG1_1[HBM_BURST_G1G2], packed_gainG1_2[HBM_BURST_G1G2];
+			ap_uint<256> packed_gainG2_1[HBM_BURST_G1G2], packed_gainG2_2[HBM_BURST_G1G2];
+			ap_uint<256> packed_pedeG1_1[HBM_BURST_G1G2], packed_pedeG1_2[HBM_BURST_G1G2];
+			ap_uint<256> packed_pedeG2_1[HBM_BURST_G1G2], packed_pedeG2_2[HBM_BURST_G1G2];
 
-			memcpy(packed_gain_1,d_hbm_p0+offset, HBM_BURST_G1G2*32);
-			memcpy(packed_gain_2,d_hbm_p1+offset, HBM_BURST_G1G2*32);
-			memcpy(packed_pede_1,d_hbm_p2+offset, HBM_BURST_G1G2*32);
-			memcpy(packed_pede_2,d_hbm_p3+offset, HBM_BURST_G1G2*32);
+			memcpy(packed_gainG0_1,d_hbm_p0+offset, HBM_BURST_G1G2*32);
+			memcpy(packed_gainG0_2,d_hbm_p1+offset, HBM_BURST_G1G2*32);
+			memcpy(packed_gainG1_1,d_hbm_p2+offset, HBM_BURST_G1G2*32);
+			memcpy(packed_gainG1_2,d_hbm_p3+offset, HBM_BURST_G1G2*32);
+			memcpy(packed_gainG2_1,d_hbm_p4+offset, HBM_BURST_G1G2*32);
+			memcpy(packed_gainG2_2,d_hbm_p5+offset, HBM_BURST_G1G2*32);
+			memcpy(packed_pedeG1_1,d_hbm_p6+offset, HBM_BURST_G1G2*32);
+			memcpy(packed_pedeG1_2,d_hbm_p7+offset, HBM_BURST_G1G2*32);
+			memcpy(packed_pedeG2_1,d_hbm_p8+offset, HBM_BURST_G1G2*32);
+			memcpy(packed_pedeG2_2,d_hbm_p9+offset, HBM_BURST_G1G2*32);
 
 			for (int i = 0; i < HBM_BURST_G1G2; i ++) {
-				data_packet_t packet_out;
-				packet_out.axis_packet = packet_in.axis_packet;
-				packet_out.axis_user = packet_in.axis_user;
-				packet_out.data = packet_in.data;
-				packet_out.eth_packet = packet_in.eth_packet;
-				packet_out.exit = packet_in.exit;
-				packet_out.frame_number = packet_in.frame_number;
-				packet_out.module = packet_in.module;
-				packet_out.trigger = packet_in.trigger;
-
-				gainG2_correction(packet_in.data, packet_in.conv_data, packet_out.conv_data, packed_gain_1[i], packed_gain_2[i],
-						packed_pede_1[i], packed_pede_2[i]);
+				data_packet_t packet_out = packet_in;
+				ap_uint<512> tmp_out;
+				convert_and_shuffle(packet_in.data, packet_out.data, packet_in.conv_data,
+						packed_gainG0_1[i],packed_gainG0_2[i],
+						packed_gainG1_1[i],packed_gainG1_2[i],
+						packed_gainG2_1[i],packed_gainG2_2[i],
+						packed_pedeG1_1[i],packed_pedeG1_2[i],
+						packed_pedeG2_1[i],packed_pedeG2_2[i],
+						output_mode);
 				out << packet_out;
 				in >> packet_in;
 			}
 		}
 		while ((packet_in.exit == 0) && (packet_in.axis_packet % HBM_BURST_G1G2 != 0)) in >> packet_in;
-	}
-	out << packet_in;
-}
-
-void merge_converted_stream(DATA_STREAM &in, DATA_STREAM &out, ap_uint<2> convert) {
-	const ap_fixed<18,16> half = 0.5f;
-	data_packet_t packet_in, packet_out;
-	in >> packet_in;
-	while (packet_in.exit == 0) {
-#pragma HLS PIPELINE II=1
-		packet_out = packet_in;
-		if (convert == 1) {
-			for (int i = 0; i < 32; i++) {
-				ap_int<16> rounded;
-				ap_fixed<18,16, AP_TRN_ZERO> original;
-				for (int j = 0; j < 18; j ++)
-					original[j] = packet_in.conv_data[i * 18 + j];
-				rounded = original + half;
-				packet_out.data(i * 16 + 15, i * 16) = rounded;
-			}
-		} else if (convert == 2) {
-			for (int i = 0; i < 32; i++) {
-				ap_int<16> rounded;
-				ap_fixed<18,16, AP_TRN_ZERO> original;
-				for (int j = 0; j < 18; j ++)
-					original[j] = packet_in.conv_data[i * 18 + j];
-				rounded = original + half;
-
-				for (int j = 0; j < 16; j ++) {
-					packet_out.data[j * 32 + i] = rounded[j];
-				}
-			}
-		}
-		out << packet_out;
-		in >> packet_in;
 	}
 	out << packet_in;
 }

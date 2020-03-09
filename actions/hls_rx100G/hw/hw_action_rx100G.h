@@ -165,6 +165,14 @@ void correctG1(DATA_STREAM &in, DATA_STREAM &out, snap_HBMbus_t *d_hbm_p0, snap_
 void correctG2(DATA_STREAM &in, DATA_STREAM &out, snap_HBMbus_t *d_hbm_p0, snap_HBMbus_t *d_hbm_p1,
 		snap_HBMbus_t *d_hbm_p2, snap_HBMbus_t *d_hbm_p3);
 void merge_converted_stream(DATA_STREAM &in, DATA_STREAM &out, ap_uint<2> output_type);
+
+void apply_gain_correction(DATA_STREAM &in, DATA_STREAM &out,
+		snap_HBMbus_t *d_hbm_p0, snap_HBMbus_t *d_hbm_p1,
+		snap_HBMbus_t *d_hbm_p2, snap_HBMbus_t *d_hbm_p3,
+		snap_HBMbus_t *d_hbm_p4, snap_HBMbus_t *d_hbm_p5,
+		snap_HBMbus_t *d_hbm_p6, snap_HBMbus_t *d_hbm_p7,
+		snap_HBMbus_t *d_hbm_p8, snap_HBMbus_t *d_hbm_p9,
+	    ap_uint<2> output_mode);
 void write_data(DATA_STREAM &in, snap_membus_t *dout_gmem,
 		size_t out_frame_buffer_addr, size_t out_frame_status_addr, snap_HBMbus_t *d_hbm_stat);
 

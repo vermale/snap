@@ -84,11 +84,11 @@ d_hbm_p1[i] = tmp(511,256);
 	}
 }
 
-#define BURST_SIZE 8
+#define BURST_SIZE 4
 
 void save_pedestal(snap_membus_t *dout_gmem, size_t offset) {
 	for (size_t i = 0; i < NPIXEL * 2 / 64 / BURST_SIZE; i ++) {
-#pragma HLS PIPELINE II = 8
+#pragma HLS PIPELINE II = 4
 
 		packed_pedeG0_t tmp[BURST_SIZE];
 		ap_uint<512> tmp2[BURST_SIZE];
@@ -101,7 +101,7 @@ void save_pedestal(snap_membus_t *dout_gmem, size_t offset) {
 
 void load_pedestal(snap_membus_t *din_gmem, size_t offset) {
 	for (size_t i = 0; i < NPIXEL * 2 / 64 / BURST_SIZE; i ++) {
-#pragma HLS PIPELINE II = 8
+#pragma HLS PIPELINE II = 4
 		packed_pedeG0_t tmp[BURST_SIZE];
 		ap_uint<512> tmp2[BURST_SIZE];
 		memcpy(tmp2, din_gmem+offset+BURST_SIZE*i, BURST_SIZE*64);
@@ -201,30 +201,38 @@ void collect_data(AXI_STREAM &din_eth,
 	DATA_STREAM after_correctG2;
 	DATA_STREAM converted;
 
-#pragma HLS STREAM variable=raw depth=4
+#pragma HLS STREAM variable=raw
 #pragma HLS RESOURCE variable=raw CORE=FIFO_LUTRAM
-#pragma HLS STREAM variable=after_pedeG0 depth=4
-#pragma HLS RESOURCE variable=after_pedeG0 CORE=FIFO_LUTRAM
-#pragma HLS STREAM variable=after_gainG0 depth=4
-#pragma HLS RESOURCE variable=after_gainG0 CORE=FIFO_LUTRAM
-#pragma HLS STREAM variable=after_correctG1 depth=512
-#pragma HLS RESOURCE variable=after_correctG1 CORE=FIFO_BRAM
-#pragma HLS STREAM variable=after_correctG2 depth=4
-#pragma HLS RESOURCE variable=after_correctG2 CORE=FIFO_LUTRAM
-#pragma HLS RESOURCE variable=converted CORE=FIFO_LUTRAM
+#pragma HLS STREAM variable=after_pedeG0 depth=512
+//#pragma HLS RESOURCE variable=after_pedeG0 CORE=FIFO_LUTRAM
+//#pragma HLS STREAM variable=after_gainG0 depth=4
+//#pragma HLS RESOURCE variable=after_gainG0 CORE=FIFO_LUTRAM
+
+//#pragma HLS RESOURCE variable=after_correctG1 CORE=FIFO_BRAM
+//#pragma HLS STREAM variable=after_correctG2 depth=4
+//#pragma HLS RESOURCE variable=after_correctG2 CORE=FIFO_LUTRAM
+#pragma HLS STREAM variable=converted depth=512
+//#pragma HLS RESOURCE variable=converted CORE=FIFO_BRAM
 
 	// 1. Read packet from 100G Ethernet
 	read_eth_packet(din_eth, raw, eth_settings, d_hbm_p10);
 	// 2. Update pedestal (for any gain) and apply G0 pedestal
 	pedestalG0(raw, after_pedeG0, conversion_settings);
 	// 3. Apply gain correction to G0 pixels
-	gainG0(after_pedeG0, after_gainG0, d_hbm_p0, d_hbm_p1);
+	apply_gain_correction(after_pedeG0, converted,
+			d_hbm_p0, d_hbm_p1,
+			d_hbm_p2, d_hbm_p3,
+			d_hbm_p4, d_hbm_p5,
+			d_hbm_p6, d_hbm_p7,
+			d_hbm_p8, d_hbm_p9,
+		    select_output);
+	//gainG0(after_pedeG0, after_gainG0, d_hbm_p0, d_hbm_p1);
 	// 4. Apply gain and pedestal corrections for G1 pixels
-	correctG1(after_gainG0, after_correctG1, d_hbm_p2, d_hbm_p3, d_hbm_p6, d_hbm_p7);
+	//correctG1(after_gainG0, after_correctG1, d_hbm_p2, d_hbm_p3, d_hbm_p6, d_hbm_p7);
 	// 5. Apply gain and pedestal corrections for G2 pixels
-	correctG2(after_correctG1, after_correctG2, d_hbm_p4, d_hbm_p5, d_hbm_p8, d_hbm_p9);
+	//correctG2(after_correctG1, after_correctG2, d_hbm_p4, d_hbm_p5, d_hbm_p8, d_hbm_p9);
 	// 6. Replace raw data with converted data in the stream
-	merge_converted_stream(after_correctG2, converted, select_output);
+	//merge_converted_stream(after_correctG2, converted, select_output);
 	// 7. Write raw or converted data to host memory
 	write_data(converted, dout_gmem, out_frame_buffer_addr, out_frame_status_addr, d_hbm_p11);
 }
@@ -376,36 +384,36 @@ void hls_action(snap_membus_t *din_gmem, snap_membus_t *dout_gmem,
 #pragma HLS INTERFACE s_axilite port=return bundle=ctrl_reg
 
 #pragma HLS INTERFACE m_axi port=d_hbm_p0 bundle=card_hbm_p0 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=4
+		max_read_burst_length=64  max_write_burst_length=64 latency=24
 #pragma HLS INTERFACE m_axi port=d_hbm_p1 bundle=card_hbm_p1 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=4
+		max_read_burst_length=64  max_write_burst_length=64 latency=24
 #pragma HLS INTERFACE m_axi port=d_hbm_p2 bundle=card_hbm_p2 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=4
+		max_read_burst_length=64  max_write_burst_length=64 latency=24
 #pragma HLS INTERFACE m_axi port=d_hbm_p3 bundle=card_hbm_p3 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=4
+		max_read_burst_length=64  max_write_burst_length=64 latency=24
 #pragma HLS INTERFACE m_axi port=d_hbm_p4 bundle=card_hbm_p4 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=4
+		max_read_burst_length=64  max_write_burst_length=64 latency=24
 #pragma HLS INTERFACE m_axi port=d_hbm_p5 bundle=card_hbm_p5 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=4
+		max_read_burst_length=64  max_write_burst_length=64 latency=24
 #pragma HLS INTERFACE m_axi port=d_hbm_p6 bundle=card_hbm_p6 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=4
+		max_read_burst_length=64  max_write_burst_length=64 latency=24
 #pragma HLS INTERFACE m_axi port=d_hbm_p7 bundle=card_hbm_p7 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=4
+		max_read_burst_length=64  max_write_burst_length=64 latency=24
 #pragma HLS INTERFACE m_axi port=d_hbm_p8 bundle=card_hbm_p8 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=4
+		max_read_burst_length=64  max_write_burst_length=64 latency=24
 #pragma HLS INTERFACE m_axi port=d_hbm_p9 bundle=card_hbm_p9 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=4
+		max_read_burst_length=64  max_write_burst_length=64 latency=24
 #pragma HLS INTERFACE m_axi port=d_hbm_p10 bundle=card_hbm_p10 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=4
+		max_read_burst_length=64  max_write_burst_length=64
 #pragma HLS INTERFACE m_axi port=d_hbm_p11 bundle=card_hbm_p11 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=4
+		max_read_burst_length=64  max_write_burst_length=64
 
 #pragma HLS INTERFACE axis register off port=din_eth
 #pragma HLS INTERFACE axis register off port=dout_eth
 #pragma HLS INTERFACE ap_none port=eth_reset
 
 #pragma HLS RESOURCE variable=packed_pedeG0 core=RAM_1P_URAM
-#pragma HLS ARRAY_PARTITION variable=packed_pedeG0 cyclic factor=8 dim=1
+#pragma HLS ARRAY_PARTITION variable=packed_pedeG0 cyclic factor=4 dim=1
 
 	/* Required Action Type Detection - NO CHANGE BELOW */
 	//	NOTE: switch generates better vhdl than "if" */
