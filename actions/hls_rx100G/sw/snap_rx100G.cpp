@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <fstream>
 #include <iostream>
 #include <fcntl.h>
 #include <stdio.h>
@@ -43,7 +44,7 @@ int main()
 	int rc = 0; // return code
 
 	// Card parameters
-	int card_no = 0;
+	int card_no = 1;
 	struct snap_card *card = NULL;
 	struct snap_action *action = NULL;
 	char device[128];
@@ -63,40 +64,40 @@ int main()
 
 	memset(&mjob, 0, sizeof(mjob));
 
-    uint64_t out_data_buffer_size = FRAME_BUF_SIZE * NPIXEL * 2; // can store FRAME_BUF_SIZE frames
-    uint64_t out_status_buffer_size = frames*NMODULES*128/8+64; // can store 1 bit per each ETH packet expected
-    uint64_t in_parameters_array_size = (6 * NPIXEL * 2); // each entry to in_parameters_array is 2 bytes and there are 6 constants per pixel
-    uint64_t out_jf_header_buffer_size = frames*NMODULES*32;
+	uint64_t out_data_buffer_size = FRAME_BUF_SIZE * NPIXEL * 2; // can store FRAME_BUF_SIZE frames
+	uint64_t out_status_buffer_size = frames*NMODULES*128/8+64; // can store 1 bit per each ETH packet expected
+	uint64_t in_parameters_array_size = (6 * NPIXEL * 2); // each entry to in_parameters_array is 2 bytes and there are 6 constants per pixel
+	uint64_t out_jf_header_buffer_size = frames*NMODULES*32;
 
-    // Arrays are allocated with mmap for the higest possible performance. Output is page aligned, so it will be also 64b aligned.
+	// Arrays are allocated with mmap for the higest possible performance. Output is page aligned, so it will be also 64b aligned.
 
-    void *out_data_buffer  = mmap (NULL, out_data_buffer_size, PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) ;
-    void *out_status_buffer = mmap (NULL, out_status_buffer_size, PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
-    void *in_parameters_array = mmap (NULL, in_parameters_array_size, PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
-    void *out_jf_header_buffer = mmap (NULL, out_jf_header_buffer_size, PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+	void *out_data_buffer  = mmap (NULL, out_data_buffer_size, PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) ;
+	void *out_status_buffer = mmap (NULL, out_status_buffer_size, PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+	void *in_parameters_array = mmap (NULL, in_parameters_array_size, PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+	void *out_jf_header_buffer = mmap (NULL, out_jf_header_buffer_size, PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
 
-    if ((out_data_buffer == NULL) || (out_status_buffer == NULL) ||
-    		(in_parameters_array == NULL) || (out_jf_header_buffer == NULL)) {
-    	std::cout << "Memory allocation error" << std::endl;
-    	exit(EXIT_FAILURE);
-    }
+	if ((out_data_buffer == NULL) || (out_status_buffer == NULL) ||
+			(in_parameters_array == NULL) || (out_jf_header_buffer == NULL)) {
+		std::cout << "Memory allocation error" << std::endl;
+		exit(EXIT_FAILURE);
+	}
 
-    // Fill output arrays with zeros
-    memset(out_data_buffer, 0x0, out_data_buffer_size);
-    memset(out_status_buffer, 0x0, out_status_buffer_size);
-    memset(in_parameters_array, 0x0, in_parameters_array_size);
+	// Fill output arrays with zeros
+	memset(out_data_buffer, 0x0, out_data_buffer_size);
+	memset(out_status_buffer, 0x0, out_status_buffer_size);
+	memset(in_parameters_array, 0x0, in_parameters_array_size);
 	memset(out_jf_header_buffer, 0x0, out_jf_header_buffer_size);
 
-    mjob.expected_frames = frames;
-    mjob.pedestalG0_frames = 0;
-    mjob.mode = MODE_RAW;
-    mjob.fpga_mac_addr = 0xAABBCCDDEEF1;   // AA:BB:CC:DD:EE:F1
-    mjob.fpga_ipv4_addr = 0x0A013205;      // 10.1.50.5
+	mjob.expected_frames = frames;
+	mjob.pedestalG0_frames = 0;
+	mjob.mode = MODE_RAW;
+	mjob.fpga_mac_addr = 0xAABBCCDDEEF1;   // AA:BB:CC:DD:EE:F1
+	mjob.fpga_ipv4_addr = 0x0A013205;      // 10.1.50.5
 
-    mjob.in_gain_pedestal_data_addr = (uint64_t) in_parameters_array;
-    mjob.out_frame_buffer_addr = (uint64_t) out_data_buffer;
-    mjob.out_frame_status_addr = (uint64_t) out_status_buffer;
-    mjob.out_jf_packet_headers_addr = (uint64_t) out_jf_header_buffer;
+	mjob.in_gain_pedestal_data_addr = (uint64_t) in_parameters_array;
+	mjob.out_frame_buffer_addr = (uint64_t) out_data_buffer;
+	mjob.out_frame_status_addr = (uint64_t) out_status_buffer;
+	mjob.out_jf_packet_headers_addr = (uint64_t) out_jf_header_buffer;
 
 	int exit_code = EXIT_SUCCESS;
 
@@ -106,10 +107,10 @@ int main()
 	// Allocate the card that will be used
 	snprintf(device, sizeof(device)-1, "/dev/cxl/afu%d.0s", card_no);
 	card = snap_card_alloc_dev(device, SNAP_VENDOR_ID_IBM,
-				   SNAP_DEVICE_ID_SNAP);
+			SNAP_DEVICE_ID_SNAP);
 	if (card == NULL) {
 		fprintf(stderr, "err: failed to open card %u: %s\n",
-			card_no, strerror(errno));
+				card_no, strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 
@@ -117,7 +118,7 @@ int main()
 	action = snap_attach_action(card, RX100G_ACTION_TYPE, action_irq, 60);
 	if (action == NULL) {
 		fprintf(stderr, "err: failed to attach action %u: %s\n",
-			card_no, strerror(errno));
+				card_no, strerror(errno));
 		snap_card_free(card);
 		exit(EXIT_FAILURE);
 	}
@@ -134,41 +135,39 @@ int main()
 
 	if (rc != 0) {
 		fprintf(stderr, "err: job execution %d: %s!\n", rc,
-			strerror(errno));
-		snap_detach_action(action);
-		snap_card_free(card);
-		exit(EXIT_FAILURE);
+				strerror(errno));
+		// snap_detach_action(action);
+		//snap_card_free(card);
+		// exit(EXIT_FAILURE);
 	}
 
-    __hexdump(stdout, out_data_buffer, 130*64);
-    __hexdump(stdout, out_status_buffer, out_status_buffer_size);
-    __hexdump(stdout, out_jf_header_buffer, out_jf_header_buffer_size);
+	std::ofstream data_file("output_data.dat",std::ios::out | std::ios::binary);
+	data_file.write(out_data_buffer, NFRAMES * NPIXEL * 2);
+	data_file.close();
 
-    std::cout << std::endl;
+	std::ofstream header_file("output_header.dat",std::ios::out | std::ios::binary);
+	header_file.write(out_jf_header_buffer, out_jf_header_buffer_size);
+	header_file.close();
+
+	std::ofstream status_file("output_status.dat",std::ios::out | std::ios::binary);
+	status_file.write(out_status_buffer, out_status_buffer_size);
+	status_file.close();
+
+	std::ofstream calibration_file("output_calib.dat",std::ios::out | std::ios::binary);
+	calibration_file.write(in_parameters_array, in_parameters_array_size);
+	calibration_file.close();
+
+	std::cout << std::endl;
 	std::cout << "General statistics " << std::endl;
 	std::cout << "================== " << std::endl << std::endl;
 	online_statistics_t *online_statistics = (online_statistics_t *) out_status_buffer;
 	std::cout << "Good Ethernet packets: " << online_statistics->good_packets << std::endl ;
 	std::cout << "Err  Ethernet packets: " << online_statistics->err_packets << std::endl ;
 	for (int i = 0; i < NMODULES; i++)
-	std::cout << "Head module " << i << ": " << online_statistics->head[i] << std::endl ;
+		std::cout << "Head module " << i << ": " << online_statistics->head[i] << std::endl ;
 	std::cout << "Trigger position     : " << online_statistics->trigger_position << std::endl;
 
 	std::cout << std::endl;
-
-	header_info_t *header_info = (header_info_t *) out_jf_header_buffer;
-	std::cout << "Header data " << std::endl;
-	std::cout << "=========== " << std::endl << std::endl;
-	for (int i = 0; i < NFRAMES; i++) {
-		for (int j = 0; j < NMODULES; j++) {
-			std::cout << "Frame number " << header_info[i*NMODULES+j].jf_frame_number
-					<< " Module: " << j
-					<< " UDP src port: " << header_info[i*NMODULES+j].udp_src_port
-					<< " UDP src port: " << header_info[i*NMODULES+j].udp_dest_port
-					<< " Timestamp: " << header_info[i*NMODULES+j].jf_timestamp
-					<< " Debug: " << header_info[i*NMODULES+j].jf_debug << std::endl;
-		}
-	}
 
 	// Detach action + disallocate the card
 	snap_detach_action(action);
