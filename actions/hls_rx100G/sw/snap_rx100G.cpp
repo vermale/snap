@@ -142,19 +142,19 @@ int main()
 	}
 
 	std::ofstream data_file("output_data.dat",std::ios::out | std::ios::binary);
-	data_file.write(out_data_buffer, NFRAMES * NPIXEL * 2);
+	data_file.write((char *) out_data_buffer, NFRAMES * NPIXEL * 2);
 	data_file.close();
 
 	std::ofstream header_file("output_header.dat",std::ios::out | std::ios::binary);
-	header_file.write(out_jf_header_buffer, out_jf_header_buffer_size);
+	header_file.write((char *) out_jf_header_buffer, out_jf_header_buffer_size);
 	header_file.close();
 
 	std::ofstream status_file("output_status.dat",std::ios::out | std::ios::binary);
-	status_file.write(out_status_buffer, out_status_buffer_size);
+	status_file.write((char *) out_status_buffer, out_status_buffer_size);
 	status_file.close();
 
 	std::ofstream calibration_file("output_calib.dat",std::ios::out | std::ios::binary);
-	calibration_file.write(in_parameters_array, in_parameters_array_size);
+	calibration_file.write((char *) in_parameters_array, in_parameters_array_size);
 	calibration_file.close();
 
 	std::cout << std::endl;
