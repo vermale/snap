@@ -25,6 +25,9 @@ double energy_in_keV = 12.4;
 std::string gainFileName[NMODULES];
 std::string pedestalFileName = "pedestal.dat";
 
+std::string file_server_host;
+std::string ib_dev_name;
+int fpga_card_number;
 
 
 // Buffers for communication with the FPGA

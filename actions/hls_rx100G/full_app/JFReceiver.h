@@ -35,6 +35,9 @@ extern double energy_in_keV;
 // File paths
 extern std::string gainFileName[NMODULES];
 extern std::string pedestalFileName;
+extern std::string file_server_host;
+extern std::string ib_dev_name;
+extern int fpga_card_number;
 
 // Buffers size
 extern size_t frame_buffer_size;

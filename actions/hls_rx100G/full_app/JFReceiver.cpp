@@ -123,7 +123,7 @@ int main(int argc, char **argv) {
     load_pedestal(pedestalFileName);
 
     // Establish RDMA link
-    if (setup_ibverbs("mlx5_0", RDMA_SQ_SIZE, 0) == 1) exit(EXIT_FAILURE);
+    if (setup_ibverbs(ib_dev_name.c_str(), RDMA_SQ_SIZE, 0) == 1) exit(EXIT_FAILURE);
     std::cout << "IB link ready" << std::endl; 
 
     // Register memory regions
@@ -161,7 +161,7 @@ int main(int argc, char **argv) {
     uint32_t remote_dest_qp_num;
     uint32_t sq_psn = 354;
 
-    exchange_ib_info_client("mx-jungfrau-1", 5232, ib_port_attr.lid, ib_qp->qp_num,
+    exchange_ib_info_client(file_server_host.c_str(), 5232, ib_port_attr.lid, ib_qp->qp_num,
     		remote_dlid, remote_dest_qp_num, sq_psn);
 
     if (switch_to_rtr(0, remote_dlid, remote_dest_qp_num) == 1) exit(EXIT_FAILURE);
