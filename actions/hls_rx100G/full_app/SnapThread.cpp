@@ -58,12 +58,16 @@ void *SnapThread(void *in_threadarg) {
 	// Fill the stucture of data exchanged with the action
 	snap_job_set(&cjob, &mjob, sizeof(mjob), NULL, 0);
 
+	std::cout << "SNAP Thread: Receiving can start" << std::endl;
+
 	// Call the action will:
 	//    write all the registers to the action (MMIO) 
 	//  + start the action 
 	//  + wait for completion
 	//  + read all the registers from the action (MMIO) 
 	rc = snap_action_sync_execute_job(action, &cjob, timeout);
+	
+	if (rc) std::cerr << "Action failed" << std::endl;
 	
 	// Detach action + disallocate the card
 	snap_detach_action(action);

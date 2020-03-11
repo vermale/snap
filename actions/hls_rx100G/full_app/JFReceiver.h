@@ -10,7 +10,7 @@
 #include "../include/action_rx100G.h"
 
 #define RECEIVING_DELAY 5
-#define RDMA_BUFFER_MAX_ELEM_SIZE (LZ4_compressBound(NPIXEL * 2) + 8)
+#define RDMA_BUFFER_MAX_ELEM_SIZE (LZ4_compressBound(NPIXEL * 2) + 20)
 #define RDMA_SQ_SIZE 8192L // Maximum receive ring length without processing
 
 #define PTHREAD_ERROR(ret,func) if (ret) printf("%s(%d) %s: err = %d\n",__FILE__,__LINE__, #func, ret), exit(ret)
@@ -23,7 +23,7 @@ extern uint32_t card_no;
 extern uint64_t nframes_to_collect;
 extern uint64_t nframes_to_write;
 
-extern uint64_t compression_threads;
+extern uint32_t compression_threads;
 extern uint64_t pedestalG0;
 extern uint8_t  conversion_mode;
 extern uint64_t fpga_mac_addr;
@@ -61,6 +61,10 @@ extern ibv_mr *ib_outgoing_buffer_mr;
 struct ThreadArg {
 	uint16_t ThreadID;
 };
+
+// Threaded 
+extern uint32_t trigger_frame;
+extern pthread_mutex_t trigger_frame_mutex; 
 
 void *SnapThread(void *in_threadarg);
 void *CompressAndSendThread(void *in_threadarg);

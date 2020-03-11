@@ -52,14 +52,16 @@ void deallocate_memory() {
     munmap(ib_outgoing_buffer, ib_outgoing_buffer_size);
 }
 
-void load_bin_file(std::string fname, char *dest, size_t size) {
+int load_bin_file(std::string fname, char *dest, size_t size) {
 	std::cout << "Loading " << fname.c_str() << std::endl;
 	std::fstream file10(fname.c_str(), std::fstream::in | std::fstream::binary);
 	if (!file10.is_open()) {
 		std::cerr << "Error opening file " << fname.c_str() << std::endl;
+		return 1;
 	} else {
 		file10.read(dest, size);
 		file10.close();
+		return 0;
 	}
 }
 
@@ -104,11 +106,10 @@ void save_pedestal(std::string fname) {
 int main(int argc, char **argv) {
     int ret;
 
-    nframes_to_write = 50;
     compression_threads = 2;
 
     std::cout << "JF Receiver " << std::endl;
-    std::cout << "Frames to write " << nframes_to_write << " compression threads " << compression_threads << std::endl;
+    std::cout << "Frames to write: " << nframes_to_write << " compression threads: " << compression_threads << std::endl;
     // Parse input parameters
 
     // Allocate memory
@@ -139,15 +140,8 @@ int main(int argc, char **argv) {
         	return 1;
     }
 
-    // Start threads
-    pthread_t snapThread1;
-//    ret = pthread_create(&snapThread1, NULL, SnapThread, NULL);
-//    PTHREAD_ERROR(ret,pthread_create);
-
-    for (int i = 0; i < NMODULES; i++) {
-    	online_statistics->head[i] = nframes_to_write + 10;
-    }
-
+    // Trigger frame mutex starts as locked, it is passed to comrpession thread ID = 0
+    pthread_mutex_lock(&trigger_frame_mutex);
     pthread_t compressionThread[compression_threads];
     ThreadArg args[compression_threads];
 
@@ -170,22 +164,46 @@ int main(int argc, char **argv) {
     if (switch_to_rts(sq_psn) == 1) exit(EXIT_FAILURE);
     std::cout << "IB Ready to send" << std::endl;
 
+    // Start threads
+    pthread_t snapThread1;
+    ret = pthread_create(&snapThread1, NULL, SnapThread, NULL);
+    PTHREAD_ERROR(ret,pthread_create);
+
+
     // Check for threads completion
-//    ret = pthread_join(snapThread1, NULL);
-//    PTHREAD_ERROR(ret,pthread_join);
+    ret = pthread_join(snapThread1, NULL);
+    PTHREAD_ERROR(ret,pthread_join);
+
+
+    // Print statistics
+    std::cout << "Data received: " << ((double) online_statistics->good_packets) / (128.0 * NMODULES * nframes_to_collect) * 100.0 << "%" << std::endl;
+    std::cout << "Trigger in frame: " << online_statistics->trigger_position << std::endl;
 
     for	(int i = 0; i <	compression_threads ; i++) {
         ret = pthread_join(compressionThread[i], NULL);
         PTHREAD_ERROR(ret,pthread_join);
     }
 
+    // Save images
+    if (conversion_mode == MODE_CONV) {
+    	std::ofstream data_file("output_data.dat",std::ios::out | std::ios::binary);
+    	data_file.write((char *) (frame_buffer + NPIXEL * online_statistics->trigger_position), nframes_to_write * NPIXEL * 2);
+    	data_file.close();
+    } else {
+    	std::ofstream data_file("output_data.dat",std::ios::out | std::ios::binary);
+    	data_file.write((char *) (frame_buffer), nframes_to_collect * NPIXEL * 2);
+    	data_file.close();
+    }
+
+    std::ofstream status_file("status_data.dat",std::ios::out | std::ios::binary);
+    status_file.write((char *) status_buffer, status_buffer_size);
+    status_file.close();
+
     // Send pedestal, header data and collection statistics
 
     // Save pedestal
     save_pedestal(pedestalFileName);
 
-    // Print statistics
-    std::cout << "Data received: " << ((double) online_statistics->good_packets) / (128.0 * NMODULES * nframes_to_collect) << "%" << std::endl;
 
     // Deregister memory region
     ibv_dereg_mr(ib_outgoing_buffer_mr);
