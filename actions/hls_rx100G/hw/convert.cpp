@@ -62,7 +62,7 @@ void pedestalG0(DATA_STREAM &in, DATA_STREAM &out, conversion_settings_t convers
 
 			ap_uint<8> mode = conversion_settings.conversion_mode;
 			ap_uint<28> frame_number = packet_in.frame_number;
-			if ((mode == MODE_CONV) && (conversion_settings.pedestalG0_frames < frame_number)) mode = MODE_PEDEG0;
+			if ((mode == MODE_CONV) && (frame_number < conversion_settings.pedestalG0_frames)) mode = MODE_PEDEG0;
 
 			ap_uint<1> accumulate_pede;
 			if (frame_number < PEDESTAL_WINDOW_SIZE) accumulate_pede = 1;
