@@ -93,7 +93,7 @@ void load_pedestal(std::string fname) {
 }
 
 void save_pedestal(std::string fname) {
-	std::cout << "Loading " << fname.c_str() << std::endl;
+	std::cout << "Saving " << fname.c_str() << std::endl;
 	std::fstream file10(fname.c_str(), std::ios::out | std::ios::binary);
 	if (!file10.is_open()) {
 		std::cerr << "Error opening file " << fname.c_str() << std::endl;
@@ -189,11 +189,25 @@ int main(int argc, char **argv) {
     	std::ofstream data_file("output_data.dat",std::ios::out | std::ios::binary);
     	data_file.write((char *) (frame_buffer + NPIXEL * online_statistics->trigger_position), nframes_to_write * NPIXEL * 2);
     	data_file.close();
+
+        int32_t *frame_sum = (int32_t *) calloc (NPIXEL, sizeof(int32_t));
+        for (uint64_t j = 0; j < nframes_to_write; j++) {
+            for (int i = 0; i < NPIXEL; i++) { 
+                int16_t tmp = frame_buffer[NPIXEL * (online_statistics->trigger_position + (uint64_t)j) + (uint64_t)i];
+                if ((tmp < 30000) && (tmp > -30000)) frame_sum[i] += tmp;
+            }
+        }
+        std::ofstream sum_file("sum_data.dat",std::ios::out | std::ios::binary);
+        sum_file.write((char *) (frame_sum), NPIXEL * sizeof(int32_t));
+        sum_file.close();
+        free (frame_sum);
     } else {
     	std::ofstream data_file("output_data.dat",std::ios::out | std::ios::binary);
     	data_file.write((char *) (frame_buffer), nframes_to_collect * NPIXEL * 2);
     	data_file.close();
     }
+
+
 
     std::ofstream status_file("status_data.dat",std::ios::out | std::ios::binary);
     status_file.write((char *) status_buffer, status_buffer_size);

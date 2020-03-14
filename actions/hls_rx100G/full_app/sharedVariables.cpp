@@ -10,11 +10,11 @@ size_t ib_outgoing_buffer_size = RDMA_BUFFER_MAX_ELEM_SIZE * RDMA_SQ_SIZE;
 uint32_t card_no = 1;
 
 uint64_t nframes_to_collect = FRAME_BUF_SIZE;
-uint64_t nframes_to_write   = 3600;
+uint64_t nframes_to_write   = 8000;
 
 uint32_t compression_threads = 16;
 uint64_t pedestalG0 = 2000;
-uint8_t  conversion_mode = MODE_CONV;
+uint8_t  conversion_mode = MODE_RAW;
 uint64_t fpga_mac_addr = 0xAABBCCDDEEF1;
 uint64_t fpga_ip_addr = 0x0A013205;
 

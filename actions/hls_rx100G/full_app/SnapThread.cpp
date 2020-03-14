@@ -69,6 +69,12 @@ void *SnapThread(void *in_threadarg) {
 	
 	if (rc) std::cerr << "Action failed" << std::endl;
 	
+        // Reset Ethernet CMAC
+        std::cout << "Resetting 100G CMAC" << std::endl;
+        mjob.mode = MODE_RESET;
+	snap_job_set(&cjob, &mjob, sizeof(mjob), NULL, 0);
+	rc = snap_action_sync_execute_job(action, &cjob, timeout);
+
 	// Detach action + disallocate the card
 	snap_detach_action(action);
 	snap_card_free(card);
