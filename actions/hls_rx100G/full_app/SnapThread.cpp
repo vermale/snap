@@ -6,54 +6,57 @@
 
 #include "JFReceiver.h"
 
-void *SnapThread(void *in_threadarg) {
+struct snap_card *card = NULL;
+struct snap_action *action = NULL;
 
-	int rc = 0;
-	
-	struct snap_card *card = NULL;
-	struct snap_action *action = NULL;
+int setup_snap(uint32_t card_number) {
 	char device[128];
-	
-	// Control register
-	struct snap_job cjob;
-	struct rx100G_job mjob;
-
-	// Time out
-	// TODO: Check if this will cause problems later
-	unsigned long timeout = TIMEOUT;
-
-	mjob.expected_frames = nframes_to_collect;
-	mjob.pedestalG0_frames = pedestalG0;
-	mjob.mode = conversion_mode;
-	mjob.fpga_mac_addr = fpga_mac_addr;   // AA:BB:CC:DD:EE:F1
-	mjob.fpga_ipv4_addr = fpga_ip_addr;      // 10.1.50.5
-
-	mjob.in_gain_pedestal_data_addr = (uint64_t) gain_pedestal_data;
-	mjob.out_frame_buffer_addr = (uint64_t) frame_buffer;
-	mjob.out_frame_status_addr = (uint64_t) online_statistics;
-	mjob.out_jf_packet_headers_addr = (uint64_t) jf_packet_headers;
 
 	// default is interrupt mode enabled (vs polling)
 	snap_action_flag_t action_irq = (snap_action_flag_t) (SNAP_ACTION_DONE_IRQ | SNAP_ATTACH_IRQ);
 
 	// Allocate the card that will be used
-	snprintf(device, sizeof(device)-1, "/dev/cxl/afu%d.0s", card_no);
+	snprintf(device, sizeof(device)-1, "/dev/cxl/afu%d.0s", card_number);
 	card = snap_card_alloc_dev(device, SNAP_VENDOR_ID_IBM,
-				   SNAP_DEVICE_ID_SNAP);
+			SNAP_DEVICE_ID_SNAP);
 	if (card == NULL) {
-		fprintf(stderr, "err: failed to open card %u: %s\n",
-			card_no, strerror(errno));
-		pthread_exit(0);
+		std::cerr << "Failed to open card #" << card_number << " " << strerror(errno) << std::endl;
+		return 1;
 	}
 
 	// Attach the action that will be used on the allocated card
 	action = snap_attach_action(card, RX100G_ACTION_TYPE, action_irq, 60);
 	if (action == NULL) {
-		fprintf(stderr, "err: failed to attach action %u: %s\n",
-			card_no, strerror(errno));
+		std::cerr << "Failed to attacj action for card #" << card_number << " " << strerror(errno) << std::endl;
 		snap_card_free(card);
-		pthread_exit(0);
+		return 1;
 	}
+	return 0;
+}
+
+void close_snap() {
+	// Detach action + deallocate the card
+	snap_detach_action(action);
+	snap_card_free(card);
+}
+
+void *snap_thread(void *in_threadarg) {
+	int rc = 0;
+
+	// Control register
+	struct snap_job cjob;
+	struct rx100G_job mjob;
+
+	mjob.expected_frames = experiment_settings.nframes_to_collect;
+	mjob.pedestalG0_frames = experiment_settings.pedestalG0_frames;
+	mjob.mode = experiment_settings.conversion_mode;
+	mjob.fpga_mac_addr = receiver_settings.fpga_mac_addr;   // AA:BB:CC:DD:EE:F1
+	mjob.fpga_ipv4_addr = receiver_settings.fpga_ip_addr;      // 10.1.50.5
+
+	mjob.in_gain_pedestal_data_addr = (uint64_t) gain_pedestal_data;
+	mjob.out_frame_buffer_addr      = (uint64_t) frame_buffer;
+	mjob.out_frame_status_addr      = (uint64_t) online_statistics;
+	mjob.out_jf_packet_headers_addr = (uint64_t) jf_packet_headers;
 
 	// Fill the stucture of data exchanged with the action
 	snap_job_set(&cjob, &mjob, sizeof(mjob), NULL, 0);
@@ -65,19 +68,16 @@ void *SnapThread(void *in_threadarg) {
 	//  + start the action 
 	//  + wait for completion
 	//  + read all the registers from the action (MMIO) 
-	rc = snap_action_sync_execute_job(action, &cjob, timeout);
-	
-	if (rc) std::cerr << "Action failed" << std::endl;
-	
-        // Reset Ethernet CMAC
-        std::cout << "Resetting 100G CMAC" << std::endl;
-        mjob.mode = MODE_RESET;
-	snap_job_set(&cjob, &mjob, sizeof(mjob), NULL, 0);
-	rc = snap_action_sync_execute_job(action, &cjob, timeout);
+	rc = snap_action_sync_execute_job(action, &cjob, TIMEOUT);
 
-	// Detach action + disallocate the card
-	snap_detach_action(action);
-	snap_card_free(card);
+	if (rc) std::cerr << "Action failed" << std::endl;
+
+	// Reset Ethernet CMAC
+	std::cout << "Resetting 100G CMAC" << std::endl;
+	mjob.mode = MODE_RESET;
+	snap_job_set(&cjob, &mjob, sizeof(mjob), NULL, 0);
+
+	rc = snap_action_sync_execute_job(action, &cjob, TIMEOUT);
 
 	pthread_exit(0);
 }
