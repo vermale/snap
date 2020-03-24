@@ -384,25 +384,25 @@ void hls_action(snap_membus_t *din_gmem, snap_membus_t *dout_gmem,
 #pragma HLS INTERFACE s_axilite port=return bundle=ctrl_reg
 
 #pragma HLS INTERFACE m_axi port=d_hbm_p0 bundle=card_hbm_p0 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=40
+		max_read_burst_length=64  max_write_burst_length=64 latency=42
 #pragma HLS INTERFACE m_axi port=d_hbm_p1 bundle=card_hbm_p1 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=40
+		max_read_burst_length=64  max_write_burst_length=64 latency=42
 #pragma HLS INTERFACE m_axi port=d_hbm_p2 bundle=card_hbm_p2 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=40
+		max_read_burst_length=64  max_write_burst_length=64 latency=42
 #pragma HLS INTERFACE m_axi port=d_hbm_p3 bundle=card_hbm_p3 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=40
+		max_read_burst_length=64  max_write_burst_length=64 latency=42
 #pragma HLS INTERFACE m_axi port=d_hbm_p4 bundle=card_hbm_p4 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=40
+		max_read_burst_length=64  max_write_burst_length=64 latency=42
 #pragma HLS INTERFACE m_axi port=d_hbm_p5 bundle=card_hbm_p5 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=40
+		max_read_burst_length=64  max_write_burst_length=64 latency=42
 #pragma HLS INTERFACE m_axi port=d_hbm_p6 bundle=card_hbm_p6 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=40
+		max_read_burst_length=64  max_write_burst_length=64 latency=42
 #pragma HLS INTERFACE m_axi port=d_hbm_p7 bundle=card_hbm_p7 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=40
+		max_read_burst_length=64  max_write_burst_length=64 latency=42
 #pragma HLS INTERFACE m_axi port=d_hbm_p8 bundle=card_hbm_p8 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=40
+		max_read_burst_length=64  max_write_burst_length=64 latency=42
 #pragma HLS INTERFACE m_axi port=d_hbm_p9 bundle=card_hbm_p9 offset=slave depth=512 \
-		max_read_burst_length=64  max_write_burst_length=64 latency=40
+		max_read_burst_length=64  max_write_burst_length=64 latency=42
 #pragma HLS INTERFACE m_axi port=d_hbm_p10 bundle=card_hbm_p10 offset=slave depth=512 \
 		max_read_burst_length=64  max_write_burst_length=64
 #pragma HLS INTERFACE m_axi port=d_hbm_p11 bundle=card_hbm_p11 offset=slave depth=512 \
@@ -427,22 +427,18 @@ void hls_action(snap_membus_t *din_gmem, snap_membus_t *dout_gmem,
 		return;
 		break;
 	default:
-		eth_reset = 0;
+                {
+#pragma HLS PROTOCOL fixed
+                   int i;
+		   eth_reset = 1;
+		   while (i < 32) {
+                      i++; ap_wait();
+                   }
+                   if (i == 32) eth_reset = 0;
+                }
 		if (act_reg->Data.mode != MODE_RESET) {
 			process_action(din_gmem, dout_gmem, d_hbm_p0, d_hbm_p1, d_hbm_p2, d_hbm_p3, d_hbm_p4, d_hbm_p5, d_hbm_p6, d_hbm_p7, d_hbm_p8, d_hbm_p9, d_hbm_p10, d_hbm_p11, din_eth, dout_eth, act_reg);
-		} else {
-#pragma HLS PROTOCOL fixed
-			// Restart Ethernet IP to clear buffers
-			// Need to do it separately, as 100G becomes inactive for some time after reset
-			eth_reset = 1;
-			int i = 0;
-			// Roughly 100 ms - should be enough to clear buffer
-			while (i < 20000) {
-				i++;
-				ap_wait();
-			}
-			if (i == 20000) eth_reset = 0;
-		}
+		} 
 		break;
 	}
 }
