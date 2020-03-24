@@ -979,8 +979,10 @@ ARCHITECTURE psl_accel OF psl_accel IS
 
     i_core_rx_reset : in STD_LOGIC;
     i_core_tx_reset : in STD_LOGIC;
-
+    
     i_sys_reset : in STD_LOGIC;
+
+    m_axis_rx_reset     : in STD_LOGIC;
 
     i_gt_rx_gt_port_0_n : in STD_LOGIC;
     i_gt_rx_gt_port_0_p : in STD_LOGIC;
@@ -2150,6 +2152,7 @@ SIGNAL tmp_sdram_axi_bid              : STD_LOGIC_VECTOR (5 downto 0);
     SIGNAL eth1_tx_tuser                : STD_LOGIC_VECTOR(0 DOWNTO 0);
 
     SIGNAL eth_rst                      : STD_LOGIC;
+    SIGNAL eth_m_axis_rx_rst            : STD_LOGIC;
 --    SIGNAL eth_rx_enable                : STD_LOGIC;
 #endif
 --
@@ -2162,7 +2165,7 @@ BEGIN
     IF (rising_edge(ha_pclock)) THEN
       action_reset_n_q   <= NOT action_reset;
 --#if defined(CONFIG_ENABLE_ETHERNET) && !defined(CONFIG_ENABLE_ETH_LOOP_BACK)
---      eth_rst            <= pci_user_reset;
+      eth_rst            <= pci_user_reset;
 --#endif
       pci_user_reset_q   <= pci_user_reset;
       pci_user_reset_qq  <= pci_user_reset_q;      
@@ -2857,7 +2860,8 @@ BEGIN
     dout_eth_TKEEP                   => eth1_tx_tkeep,
     dout_eth_TUSER                   => eth1_tx_tuser,
     dout_eth_TLAST                   => eth1_tx_tlast,
-    eth_reset                        => eth_rst,
+    
+    eth_reset                        => eth_m_axis_rx_rst,
 #endif
       --
       -- AXI Control Register Interface
@@ -3604,11 +3608,12 @@ BEGIN
         s_axis_tx_tuser               => eth1_tx_tuser,
         s_axis_tx_tready              => eth1_tx_tready,
 
+       
         i_sys_reset                     => eth_rst,
-        i_core_rx_reset                 => eth_rst,
-        i_core_tx_reset                 => eth_rst,
+        i_core_rx_reset                 => '0',
+        i_core_tx_reset                 => '0',
 	i_capi_clk	                => ha_pclock,
-
+        m_axis_rx_reset                 => eth_m_axis_rx_rst,
         i_ctl_rx_enable                 => '1',
         i_ctl_rx_rsfec_enable           => '1',
         i_ctl_tx_enable                 => '1',
